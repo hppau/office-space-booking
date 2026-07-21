@@ -1,0 +1,266 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  HR
+  MANAGER
+  EMPLOYEE
+}
+
+enum ResourceType {
+  DESK
+  CHAIR
+  MEETING_ROOM
+  PRIVATE_ROOM
+  TRAINING_ROOM
+  HOT_DESK
+  OTHER
+}
+
+enum ResourceStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+  BLOCKED
+}
+
+enum BookingStatus {
+  DRAFT
+  PENDING_MANAGER
+  PENDING_HR
+  APPROVED
+  REJECTED
+  CANCELLED
+  CHECKED_IN
+  COMPLETED
+  NO_SHOW
+}
+
+enum ApprovalDecision {
+  APPROVED
+  REJECTED
+  MORE_INFORMATION_REQUIRED
+}
+
+model Department {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique @db.VarChar(100)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users User[]
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  employeeCode String?  @unique @db.VarChar(50)
+  fullName     String   @db.VarChar(150)
+  email        String   @unique @db.VarChar(191)
+  passwordHash String?  @db.VarChar(255)
+  role         UserRole @default(EMPLOYEE)
+  departmentId Int?
+  managerId    Int?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  department Department? @relation(fields: [departmentId], references: [id])
+
+  manager   User?  @relation("UserManager", fields: [managerId], references: [id])
+  employees User[] @relation("UserManager")
+
+  bookings                Booking[]
+  approvals               BookingApproval[]
+  sessions                Session[]
+  createdOffices          Office[]                 @relation("OfficeCreatedBy")
+  createdFloors           Floor[]                  @relation("FloorCreatedBy")
+  createdResources        Resource[]               @relation("ResourceCreatedBy")
+  emailVerificationTokens EmailVerificationToken[]
+  sentEmailLogs           EmailLog[]               @relation("EmailSentByUser")
+
+  @@index([departmentId])
+  @@index([managerId])
+  @@index([role])
+}
+
+model EmailVerificationToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  tokenHash String   @unique @db.VarChar(64)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Office {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(150)
+  address     String?  @db.VarChar(500)
+  timezone    String   @default("Asia/Singapore") @db.VarChar(100)
+  isActive    Boolean  @default(true)
+  createdById Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy User?   @relation("OfficeCreatedBy", fields: [createdById], references: [id])
+  floors    Floor[]
+
+  @@unique([name])
+  @@index([createdById])
+}
+
+model Floor {
+  id              Int      @id @default(autoincrement())
+  officeId        Int
+  name            String   @db.VarChar(100)
+  floorNumber     Int?
+  floorPlanUrl    String?  @db.VarChar(500)
+  floorPlanWidth  Int?
+  floorPlanHeight Int?
+  isActive        Boolean  @default(true)
+  createdById     Int?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  office    Office     @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  createdBy User?      @relation("FloorCreatedBy", fields: [createdById], references: [id])
+  resources Resource[]
+
+  @@unique([officeId, name])
+  @@index([officeId])
+  @@index([createdById])
+}
+
+model Resource {
+  id               Int            @id @default(autoincrement())
+  floorId          Int
+  code             String         @unique @db.VarChar(50)
+  name             String         @db.VarChar(150)
+  type             ResourceType
+  status           ResourceStatus @default(ACTIVE)
+  description      String?        @db.VarChar(500)
+  capacity         Int            @default(1)
+  amenities        Json?
+  requiresApproval Boolean        @default(true)
+  requiresManager  Boolean        @default(false)
+  xPercent         Decimal?       @db.Decimal(7, 4)
+  yPercent         Decimal?       @db.Decimal(7, 4)
+  widthPercent     Decimal?       @db.Decimal(7, 4)
+  heightPercent    Decimal?       @db.Decimal(7, 4)
+  rotation         Decimal?       @default(0) @db.Decimal(7, 2)
+  iconName         String?        @db.VarChar(100)
+  isActive         Boolean        @default(true)
+  createdById      Int?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  floor     Floor     @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  createdBy User?     @relation("ResourceCreatedBy", fields: [createdById], references: [id])
+  bookings  Booking[]
+
+  @@index([floorId])
+  @@index([createdById])
+  @@index([type])
+  @@index([status])
+}
+
+model Booking {
+  id                 Int           @id @default(autoincrement())
+  bookingNumber      String        @unique @db.VarChar(50)
+  userId             Int
+  resourceId         Int
+  startAt            DateTime
+  endAt              DateTime
+  reason             String        @db.VarChar(250)
+  attendeeCount      Int           @default(1)
+  requiredEquipment  Json?
+  notes              String?       @db.VarChar(1000)
+  status             BookingStatus @default(PENDING_HR)
+  rejectionReason    String?       @db.VarChar(500)
+  cancellationReason String?       @db.VarChar(500)
+  checkedInAt        DateTime?
+  checkedOutAt       DateTime?
+
+  approvedEmailSent     Boolean   @default(false)
+  approvedEmailSentAt   DateTime?
+  rejectedEmailSent     Boolean   @default(false)
+  rejectedEmailSentAt   DateTime?
+  lastNotificationError String?   @db.VarChar(500)
+
+  emailLogs EmailLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User              @relation(fields: [userId], references: [id])
+  resource  Resource          @relation(fields: [resourceId], references: [id])
+  approvals BookingApproval[]
+
+  @@index([userId])
+  @@index([resourceId])
+  @@index([resourceId, startAt, endAt])
+  @@index([status])
+}
+
+model BookingApproval {
+  id         Int              @id @default(autoincrement())
+  bookingId  Int
+  approverId Int
+  stage      String           @db.VarChar(50)
+  decision   ApprovalDecision
+  comment    String?          @db.VarChar(500)
+  decidedAt  DateTime         @default(now())
+
+  booking  Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  approver User    @relation(fields: [approverId], references: [id])
+
+  @@index([bookingId])
+  @@index([approverId])
+}
+
+model Session {
+  id        Int      @id @default(autoincrement())
+  tokenHash String   @unique @db.VarChar(64)
+  userId    Int
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model EmailLog {
+  id           Int      @id @default(autoincrement())
+  bookingId    Int?
+  sentById     Int?
+  toEmail      String   @db.VarChar(191)
+  toName       String?  @db.VarChar(150)
+  subject      String   @db.VarChar(255)
+  body         String   @db.Text
+  emailType    String   @db.VarChar(50)
+  status       String   @default("SENT") @db.VarChar(50)
+  errorMessage String?  @db.VarChar(500)
+  sentAt       DateTime @default(now())
+
+  booking Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  sentBy  User?    @relation("EmailSentByUser", fields: [sentById], references: [id], onDelete: SetNull)
+
+  @@index([bookingId])
+  @@index([sentById])
+  @@index([emailType])
+  @@index([sentAt])
+}

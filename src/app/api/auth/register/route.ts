@@ -31,6 +31,30 @@ function createVerificationUrl(token: string) {
   return `${appUrl}/api/auth/verify-email?token=${token}`;
 }
 
+async function getDefaultEmployeeLinks() {
+  const defaultDepartment = await prisma.department.findFirst({
+    where: {
+      name: "Engineering",
+      isActive: true,
+    },
+  });
+
+  const defaultManager = await prisma.user.findFirst({
+    where: {
+      role: "MANAGER",
+      isActive: true,
+    },
+    orderBy: {
+      id: "asc",
+    },
+  });
+
+  return {
+    departmentId: defaultDepartment?.id ?? null,
+    managerId: defaultManager?.id ?? null,
+  };
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as RegisterRequest;
@@ -120,8 +144,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const passwordHash = await hashPassword(password);
     const verificationToken = createVerificationToken();
     const verificationUrl = createVerificationUrl(verificationToken.token);
+    const defaultLinks = await getDefaultEmployeeLinks();
 
     if (existingUser && !existingUser.isActive) {
       await prisma.emailVerificationToken.deleteMany({
@@ -130,18 +156,37 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      await prisma.emailVerificationToken.create({
+      const updatedUser = await prisma.user.update({
+        where: {
+          id: existingUser.id,
+        },
         data: {
-          userId: existingUser.id,
-          tokenHash: verificationToken.tokenHash,
-          expiresAt: verificationToken.expiresAt,
+          fullName,
+          passwordHash,
+          role: "EMPLOYEE",
+          departmentId: defaultLinks.departmentId,
+          managerId: defaultLinks.managerId,
+          isActive: false,
+          emailVerificationTokens: {
+            create: {
+              tokenHash: verificationToken.tokenHash,
+              expiresAt: verificationToken.expiresAt,
+            },
+          },
+        },
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          role: true,
+          isActive: true,
         },
       });
 
       try {
         await sendVerificationEmail({
-          to: existingUser.email,
-          fullName: existingUser.fullName,
+          to: updatedUser.email,
+          fullName: updatedUser.fullName,
           verificationUrl,
         });
       } catch (emailError) {
@@ -162,18 +207,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         message:
-          "Your account already exists but is not verified yet. A new verification email has been sent.",
-        data: {
-          id: existingUser.id,
-          fullName: existingUser.fullName,
-          email: existingUser.email,
-          role: existingUser.role,
-          isActive: existingUser.isActive,
-        },
+          "Your account already exists but is not verified yet. Your password was updated and a new verification email has been sent.",
+        data: updatedUser,
       });
     }
-
-    const passwordHash = await hashPassword(password);
 
     const user = await prisma.user.create({
       data: {
@@ -181,6 +218,8 @@ export async function POST(request: NextRequest) {
         email,
         passwordHash,
         role: "EMPLOYEE",
+        departmentId: defaultLinks.departmentId,
+        managerId: defaultLinks.managerId,
         isActive: false,
         emailVerificationTokens: {
           create: {

@@ -200,7 +200,7 @@ export async function POST(
     }
 
     const bucketName =
-      process.env.SUPABASE_ROOM_PLAN_BUCKET ??
+      process.env.SUPABASE_ROOM_PLAN_BUCKET?.trim() ||
       "room-plans";
 
     const extension =
@@ -212,7 +212,53 @@ export async function POST(
     const buffer = Buffer.from(
       await uploadedFile.arrayBuffer(),
     );
+    const {
+      data: visibleBuckets,
+      error: listBucketsError,
+    } = await supabaseAdmin.storage.listBuckets();
 
+    const visibleBucketNames =
+      visibleBuckets?.map((bucket) => bucket.name) ?? [];
+
+    console.log("Room-plan storage diagnostic:", {
+      configuredBucket: JSON.stringify(bucketName),
+      visibleBucketNames,
+      listBucketsError: listBucketsError
+        ? {
+            message: listBucketsError.message,
+            name: listBucketsError.name,
+          }
+        : null,
+      supabaseProjectHost: supabaseUrl
+        ? new URL(supabaseUrl).host
+        : "missing",
+    });
+
+    if (listBucketsError) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: `Unable to access Supabase Storage: ${listBucketsError.message}`,
+        },
+        {
+          status: 500,
+        },
+      );
+    }
+
+    if (!visibleBucketNames.includes(bucketName)) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            `Storage connection is working, but bucket "${bucketName}" ` +
+            `is not visible in the configured Supabase project.`,
+        },
+        {
+          status: 500,
+        },
+      );
+    }
     const { error: uploadError } =
       await supabaseAdmin.storage
         .from(bucketName)

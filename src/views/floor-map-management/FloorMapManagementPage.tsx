@@ -6,14 +6,28 @@ import {
   useRef,
   useState,
 } from "react";
+
 import {
+  createManagedSpace,
+  deactivateManagedSpace,
   getFloorsForManagement,
   getManagedSpaces,
   removeSpaceMapPosition,
+  updateManagedSpace,
   updateSpaceMapPosition,
 } from "@/api/api-service";
+
 import type { ManagedFloor } from "@/models/location-management";
-import type { ManagedSpace } from "@/models/space-management";
+import type {
+  CreateSpaceRequest,
+  ManagedSpace,
+  SpaceMapPositionRequest,
+  UpdateSpaceRequest,
+} from "@/models/space-management";
+import type {
+  ResourceStatus,
+  ResourceType,
+} from "@/models/resource";
 
 const selectClassName =
   "w-full rounded-2xl border border-[#ded6c7] bg-[#fffdf6] px-4 py-3 text-sm font-medium text-[#3f463b] outline-none transition focus:border-[#c65f2e] focus:ring-2 focus:ring-[#c65f2e]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-orange-300 dark:focus:ring-orange-300/20";
@@ -21,17 +35,87 @@ const selectClassName =
 const inputClassName =
   "w-full rounded-2xl border border-[#ded6c7] bg-[#fffdf6] px-4 py-3 text-sm font-medium text-[#3f463b] outline-none transition placeholder:text-[#aaa08c] focus:border-[#c65f2e] focus:ring-2 focus:ring-[#c65f2e]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-orange-300 dark:focus:ring-orange-300/20";
 
-type DragPoint = {
+const labelClassName =
+  "mb-2 block text-sm font-bold text-[#5f6658] dark:text-slate-300";
+
+const resourceTypes: Array<{
+  value: ResourceType;
+  label: string;
+}> = [
+  { value: "DESK", label: "Desk" },
+  { value: "CHAIR", label: "Chair" },
+  { value: "MEETING_ROOM", label: "Meeting Room" },
+  { value: "PRIVATE_ROOM", label: "Private Room" },
+  { value: "TRAINING_ROOM", label: "Training Room" },
+  { value: "HOT_DESK", label: "Hot Desk" },
+  { value: "OTHER", label: "Other" },
+];
+
+const resourceStatuses: Array<{
+  value: ResourceStatus;
+  label: string;
+}> = [
+  { value: "ACTIVE", label: "Active" },
+  { value: "INACTIVE", label: "Inactive" },
+  { value: "MAINTENANCE", label: "Maintenance" },
+  { value: "BLOCKED", label: "Blocked" },
+];
+
+type EditorMode = "select" | "draw" | "duplicate";
+type ResizeHandle = "nw" | "ne" | "sw" | "se";
+
+type Point = {
   x: number;
   y: number;
 };
 
-type DraftArea = {
+type Rect = {
   xPercent: number;
   yPercent: number;
   widthPercent: number;
   heightPercent: number;
 };
+
+type SpaceForm = {
+  code: string;
+  name: string;
+  type: ResourceType;
+  status: ResourceStatus;
+  capacity: number;
+  description: string;
+  amenitiesText: string;
+  requiresApproval: boolean;
+  requiresManager: boolean;
+};
+
+type Interaction =
+  | {
+      type: "draw";
+      pointerId: number;
+      start: Point;
+    }
+  | {
+      type: "move";
+      pointerId: number;
+      spaceId: number;
+      pointerStart: Point;
+      originalRect: Rect;
+      hasMoved: boolean;
+    }
+  | {
+      type: "resize";
+      pointerId: number;
+      spaceId: number;
+      originalRect: Rect;
+      handle: ResizeHandle;
+    }
+  | null;
+
+type CreateModalState = {
+  mode: "create" | "duplicate";
+  rect: Rect;
+  form: SpaceForm;
+} | null;
 
 function toNumber(
   value: string | number | null | undefined,
@@ -44,17 +128,123 @@ function toNumber(
     return null;
   }
 
-  const parsedValue = Number(value);
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
 
-  if (!Number.isFinite(parsedValue)) {
+function clamp(
+  value: number,
+  minimum: number,
+  maximum: number,
+): number {
+  return Math.max(minimum, Math.min(maximum, value));
+}
+
+function roundPercent(value: number): number {
+  return Number(value.toFixed(4));
+}
+
+function rectFromSpace(space: ManagedSpace): Rect | null {
+  const xPercent = toNumber(space.xPercent);
+  const yPercent = toNumber(space.yPercent);
+  const widthPercent = toNumber(space.widthPercent);
+  const heightPercent = toNumber(space.heightPercent);
+
+  if (
+    xPercent === null ||
+    yPercent === null ||
+    widthPercent === null ||
+    heightPercent === null
+  ) {
     return null;
   }
 
-  return parsedValue;
+  return {
+    xPercent,
+    yPercent,
+    widthPercent,
+    heightPercent,
+  };
 }
 
-function clamp(value: number, minimum: number, maximum: number) {
-  return Math.max(minimum, Math.min(maximum, value));
+function createRect(start: Point, end: Point): Rect {
+  return {
+    xPercent: Math.min(start.x, end.x),
+    yPercent: Math.min(start.y, end.y),
+    widthPercent: Math.abs(end.x - start.x),
+    heightPercent: Math.abs(end.y - start.y),
+  };
+}
+
+function emptySpaceForm(): SpaceForm {
+  return {
+    code: "",
+    name: "",
+    type: "MEETING_ROOM",
+    status: "ACTIVE",
+    capacity: 1,
+    description: "",
+    amenitiesText: "",
+    requiresApproval: true,
+    requiresManager: false,
+  };
+}
+
+function spaceFormFromSpace(space: ManagedSpace): SpaceForm {
+  const amenities = Array.isArray(space.amenities)
+    ? space.amenities
+        .filter(
+          (item): item is string =>
+            typeof item === "string",
+        )
+        .join(", ")
+    : "";
+
+  return {
+    code: space.code,
+    name: space.name,
+    type: space.type,
+    status: space.status,
+    capacity: space.capacity,
+    description: space.description ?? "",
+    amenitiesText: amenities,
+    requiresApproval: space.requiresApproval,
+    requiresManager: space.requiresManager,
+  };
+}
+
+function buildSpaceRequest(
+  form: SpaceForm,
+  floorId: number,
+): CreateSpaceRequest {
+  return {
+    code: form.code.trim(),
+    name: form.name.trim(),
+    type: form.type,
+    status: form.status,
+    capacity: Number(form.capacity),
+    description: form.description.trim() || null,
+    amenities: form.amenitiesText
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean),
+    requiresApproval: form.requiresApproval,
+    requiresManager: form.requiresManager,
+    floorId,
+  };
+}
+
+function buildMapRequest(
+  rect: Rect,
+): SpaceMapPositionRequest {
+  return {
+    xPercent: roundPercent(rect.xPercent),
+    yPercent: roundPercent(rect.yPercent),
+    widthPercent: roundPercent(rect.widthPercent),
+    heightPercent: roundPercent(rect.heightPercent),
+    rotation: 0,
+    iconName: "area",
+  };
 }
 
 export default function FloorMapManagementPage() {
@@ -64,32 +254,94 @@ export default function FloorMapManagementPage() {
   const [spaces, setSpaces] = useState<ManagedSpace[]>([]);
 
   const [selectedFloorId, setSelectedFloorId] =
-    useState<number>(0);
-
+    useState(0);
   const [selectedSpaceId, setSelectedSpaceId] =
-    useState<number>(0);
+    useState(0);
 
-  const [widthPercent, setWidthPercent] = useState(10);
-  const [heightPercent, setHeightPercent] = useState(10);
+  const [mode, setMode] =
+    useState<EditorMode>("select");
+  const [interaction, setInteraction] =
+    useState<Interaction>(null);
+  const [draftRect, setDraftRect] =
+    useState<Rect | null>(null);
 
-  const [dragStart, setDragStart] =
-    useState<DragPoint | null>(null);
+  const [menuSpaceId, setMenuSpaceId] =
+    useState<number | null>(null);
 
-  const [draftArea, setDraftArea] =
-    useState<DraftArea | null>(null);
-
-  const [isDrawingArea, setIsDrawingArea] =
+  const [createModal, setCreateModal] =
+    useState<CreateModalState>(null);
+  const [editModalOpen, setEditModalOpen] =
     useState(false);
+  const [assignModalOpen, setAssignModalOpen] =
+    useState(false);
+
+  const [editForm, setEditForm] =
+    useState<SpaceForm>(emptySpaceForm());
+  const [editRect, setEditRect] =
+    useState<Rect | null>(null);
+  const [assignTargetId, setAssignTargetId] =
+    useState(0);
 
   const [isLoading, setIsLoading] = useState(true);
-  const [isSavingPosition, setIsSavingPosition] =
-    useState(false);
-
+  const [isSaving, setIsSaving] = useState(false);
   const [loadError, setLoadError] = useState("");
-  const [actionMessage, setActionMessage] = useState("");
+  const [actionMessage, setActionMessage] =
+    useState("");
+
+  const floorsWithPlans = useMemo(
+    () =>
+      floors.filter(
+        (floor) =>
+          floor.isActive &&
+          Boolean(floor.floorPlanUrl),
+      ),
+    [floors],
+  );
+
+  const selectedFloor = useMemo(
+    () =>
+      floors.find(
+        (floor) => floor.id === selectedFloorId,
+      ) ?? null,
+    [floors, selectedFloorId],
+  );
+
+  const spacesOnSelectedFloor = useMemo(
+    () =>
+      spaces.filter(
+        (space) =>
+          space.floorId === selectedFloorId &&
+          space.isActive,
+      ),
+    [spaces, selectedFloorId],
+  );
+
+  const selectedSpace = useMemo(
+    () =>
+      spacesOnSelectedFloor.find(
+        (space) => space.id === selectedSpaceId,
+      ) ?? null,
+    [spacesOnSelectedFloor, selectedSpaceId],
+  );
+
+  const unplacedSpaces = useMemo(
+    () =>
+      spacesOnSelectedFloor.filter(
+        (space) => rectFromSpace(space) === null,
+      ),
+    [spacesOnSelectedFloor],
+  );
+
+  const placedSpaceCount = useMemo(
+    () =>
+      spacesOnSelectedFloor.filter(
+        (space) => rectFromSpace(space) !== null,
+      ).length,
+    [spacesOnSelectedFloor],
+  );
 
   useEffect(() => {
-    async function loadPageData() {
+    async function loadData() {
       try {
         setIsLoading(true);
         setLoadError("");
@@ -103,21 +355,17 @@ export default function FloorMapManagementPage() {
         setFloors(floorRecords);
         setSpaces(spaceRecords);
 
-        const firstFloorWithImage = floorRecords.find(
+        const firstFloor = floorRecords.find(
           (floor) =>
             floor.isActive &&
             Boolean(floor.floorPlanUrl),
         );
 
-        if (firstFloorWithImage) {
-          setSelectedFloorId(firstFloorWithImage.id);
+        if (firstFloor) {
+          setSelectedFloorId(firstFloor.id);
         }
       } catch (error) {
-        console.error(
-          "Failed to load floor map data:",
-          error,
-        );
-
+        console.error(error);
         setLoadError(
           error instanceof Error
             ? error.message
@@ -128,414 +376,717 @@ export default function FloorMapManagementPage() {
       }
     }
 
-    void loadPageData();
+    void loadData();
   }, []);
 
-  const floorsWithImages = useMemo(() => {
-    return floors.filter(
-      (floor) =>
-        floor.isActive && Boolean(floor.floorPlanUrl),
-    );
-  }, [floors]);
-
-  const selectedFloor = useMemo(() => {
-    return (
-      floors.find(
-        (floor) => floor.id === selectedFloorId,
-      ) ?? null
-    );
-  }, [floors, selectedFloorId]);
-
-  const spacesOnSelectedFloor = useMemo(() => {
-    return spaces.filter(
-      (space) =>
-        space.floorId === selectedFloorId &&
-        space.isActive,
-    );
-  }, [spaces, selectedFloorId]);
-
-  const selectedSpace = useMemo(() => {
-    return (
-      spacesOnSelectedFloor.find(
-        (space) => space.id === selectedSpaceId,
-      ) ?? null
-    );
-  }, [spacesOnSelectedFloor, selectedSpaceId]);
+  useEffect(() => {
+    setSelectedSpaceId(0);
+    setMenuSpaceId(null);
+    setMode("select");
+    setDraftRect(null);
+    setInteraction(null);
+    setActionMessage("");
+  }, [selectedFloorId]);
 
   useEffect(() => {
-    const firstSpace = spacesOnSelectedFloor[0];
-
-    if (!selectedSpaceId && firstSpace) {
-      setSelectedSpaceId(firstSpace.id);
-      return;
-    }
-
-    if (
-      selectedSpaceId &&
-      !spacesOnSelectedFloor.some(
-        (space) => space.id === selectedSpaceId,
-      )
-    ) {
-      setSelectedSpaceId(firstSpace?.id ?? 0);
-    }
-  }, [selectedSpaceId, spacesOnSelectedFloor]);
-
-  useEffect(() => {
-    setDraftArea(null);
-    setDragStart(null);
-    setIsDrawingArea(false);
-
     if (!selectedSpace) {
-      setWidthPercent(10);
-      setHeightPercent(10);
+      setEditForm(emptySpaceForm());
+      setEditRect(null);
       return;
     }
 
-    setWidthPercent(
-      toNumber(selectedSpace.widthPercent) ?? 10,
-    );
-
-    setHeightPercent(
-      toNumber(selectedSpace.heightPercent) ?? 10,
-    );
+    setEditForm(spaceFormFromSpace(selectedSpace));
+    setEditRect(rectFromSpace(selectedSpace));
   }, [selectedSpace]);
 
-  function getPointerPercent(
-    event: React.PointerEvent<HTMLDivElement>,
-  ): DragPoint | null {
-    const mapElement = mapRef.current;
+  useEffect(() => {
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key !== "Escape") {
+        return;
+      }
 
-    if (!mapElement) {
+      setMenuSpaceId(null);
+      setMode("select");
+      setDraftRect(null);
+      setInteraction(null);
+      setCreateModal(null);
+      setEditModalOpen(false);
+      setAssignModalOpen(false);
+    }
+
+    window.addEventListener("keydown", handleEscape);
+    return () =>
+      window.removeEventListener(
+        "keydown",
+        handleEscape,
+      );
+  }, []);
+
+  function getPoint(
+    clientX: number,
+    clientY: number,
+  ): Point | null {
+    const map = mapRef.current;
+
+    if (!map) {
       return null;
     }
 
-    const rect = mapElement.getBoundingClientRect();
+    const bounds = map.getBoundingClientRect();
 
-    if (rect.width <= 0 || rect.height <= 0) {
+    if (bounds.width <= 0 || bounds.height <= 0) {
       return null;
     }
 
-    const x =
-      ((event.clientX - rect.left) / rect.width) * 100;
-
-    const y =
-      ((event.clientY - rect.top) / rect.height) * 100;
-
     return {
-      x: clamp(x, 0, 100),
-      y: clamp(y, 0, 100),
+      x: clamp(
+        ((clientX - bounds.left) / bounds.width) *
+          100,
+        0,
+        100,
+      ),
+      y: clamp(
+        ((clientY - bounds.top) / bounds.height) *
+          100,
+        0,
+        100,
+      ),
     };
   }
 
-  function createAreaFromPoints(
-    start: DragPoint,
-    end: DragPoint,
-  ): DraftArea {
-    return {
-      xPercent: Math.min(start.x, end.x),
-      yPercent: Math.min(start.y, end.y),
-      widthPercent: Math.abs(end.x - start.x),
-      heightPercent: Math.abs(end.y - start.y),
-    };
+  function replaceSpace(updatedSpace: ManagedSpace) {
+    setSpaces((current) =>
+      current.map((space) =>
+        space.id === updatedSpace.id
+          ? updatedSpace
+          : space,
+      ),
+    );
   }
 
-  function handlePointerDown(
+  function updateSpaceRectLocally(
+    spaceId: number,
+    rect: Rect,
+  ) {
+    setSpaces((current) =>
+      current.map((space) =>
+        space.id === spaceId
+          ? {
+              ...space,
+              xPercent: String(
+                roundPercent(rect.xPercent),
+              ),
+              yPercent: String(
+                roundPercent(rect.yPercent),
+              ),
+              widthPercent: String(
+                roundPercent(rect.widthPercent),
+              ),
+              heightPercent: String(
+                roundPercent(rect.heightPercent),
+              ),
+            }
+          : space,
+      ),
+    );
+
+    if (spaceId === selectedSpaceId) {
+      setEditRect(rect);
+    }
+  }
+
+  function selectSpace(space: ManagedSpace) {
+    setSelectedSpaceId(space.id);
+    setMenuSpaceId(space.id);
+    setMode("select");
+    setActionMessage("");
+  }
+
+  function openEditModal(space: ManagedSpace) {
+    setSelectedSpaceId(space.id);
+    setEditForm(spaceFormFromSpace(space));
+    setEditRect(rectFromSpace(space));
+    setEditModalOpen(true);
+    setMenuSpaceId(null);
+  }
+
+  function startDuplicate(space: ManagedSpace) {
+    const rect = rectFromSpace(space);
+
+    if (!rect) {
+      return;
+    }
+
+    setSelectedSpaceId(space.id);
+    setMode("duplicate");
+    setMenuSpaceId(null);
+    setActionMessage(
+      "Click on the floor plan where the duplicate should be placed.",
+    );
+  }
+
+  function openAssignModal(space: ManagedSpace) {
+    setSelectedSpaceId(space.id);
+    setAssignTargetId(0);
+    setAssignModalOpen(true);
+    setMenuSpaceId(null);
+  }
+
+  function beginMapAction(
     event: React.PointerEvent<HTMLDivElement>,
   ) {
     if (
-      !selectedFloor ||
-      !selectedSpace ||
-      isSavingPosition
+      event.button !== 0 ||
+      isSaving ||
+      !selectedFloor
     ) {
       return;
     }
 
-    if (event.button !== 0) {
-      return;
-    }
-
-    const point = getPointerPercent(event);
+    const point = getPoint(
+      event.clientX,
+      event.clientY,
+    );
 
     if (!point) {
       return;
     }
 
+    if (mode === "select") {
+      setMenuSpaceId(null);
+      setSelectedSpaceId(0);
+      return;
+    }
+
+    if (mode === "duplicate") {
+      if (!selectedSpace) {
+        setMode("select");
+        return;
+      }
+
+      const sourceRect = rectFromSpace(selectedSpace);
+
+      if (!sourceRect) {
+        setMode("select");
+        return;
+      }
+
+      const duplicateRect: Rect = {
+        xPercent: clamp(
+          point.x - sourceRect.widthPercent / 2,
+          0,
+          100 - sourceRect.widthPercent,
+        ),
+        yPercent: clamp(
+          point.y - sourceRect.heightPercent / 2,
+          0,
+          100 - sourceRect.heightPercent,
+        ),
+        widthPercent: sourceRect.widthPercent,
+        heightPercent: sourceRect.heightPercent,
+      };
+
+      setDraftRect(duplicateRect);
+      setCreateModal({
+        mode: "duplicate",
+        rect: duplicateRect,
+        form: {
+          ...spaceFormFromSpace(selectedSpace),
+          code: `${selectedSpace.code}-COPY`,
+          name: `${selectedSpace.name} Copy`,
+        },
+      });
+      return;
+    }
+
     event.preventDefault();
-    event.currentTarget.setPointerCapture(
+    mapRef.current?.setPointerCapture(
       event.pointerId,
     );
 
-    setActionMessage("");
-    setDragStart(point);
-    setIsDrawingArea(true);
-
-    setDraftArea({
+    setSelectedSpaceId(0);
+    setMenuSpaceId(null);
+    setDraftRect({
       xPercent: point.x,
       yPercent: point.y,
       widthPercent: 0,
       heightPercent: 0,
+    });
+
+    setInteraction({
+      type: "draw",
+      pointerId: event.pointerId,
+      start: point,
+    });
+  }
+
+  function beginMove(
+    event: React.PointerEvent<HTMLButtonElement>,
+    space: ManagedSpace,
+  ) {
+    if (mode !== "select" || isSaving) {
+      return;
+    }
+
+    const point = getPoint(
+      event.clientX,
+      event.clientY,
+    );
+    const rect = rectFromSpace(space);
+
+    if (!point || !rect) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    mapRef.current?.setPointerCapture(
+      event.pointerId,
+    );
+
+    setSelectedSpaceId(space.id);
+    setInteraction({
+      type: "move",
+      pointerId: event.pointerId,
+      spaceId: space.id,
+      pointerStart: point,
+      originalRect: rect,
+      hasMoved: false,
+    });
+  }
+
+  function beginResize(
+    event: React.PointerEvent<HTMLSpanElement>,
+    space: ManagedSpace,
+    handle: ResizeHandle,
+  ) {
+    if (isSaving) {
+      return;
+    }
+
+    const rect = rectFromSpace(space);
+
+    if (!rect) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    mapRef.current?.setPointerCapture(
+      event.pointerId,
+    );
+
+    setSelectedSpaceId(space.id);
+    setMenuSpaceId(null);
+    setInteraction({
+      type: "resize",
+      pointerId: event.pointerId,
+      spaceId: space.id,
+      originalRect: rect,
+      handle,
     });
   }
 
   function handlePointerMove(
     event: React.PointerEvent<HTMLDivElement>,
   ) {
-    if (!dragStart || !isDrawingArea) {
+    if (!interaction) {
       return;
     }
 
-    const point = getPointerPercent(event);
+    const point = getPoint(
+      event.clientX,
+      event.clientY,
+    );
 
     if (!point) {
       return;
     }
 
-    setDraftArea(
-      createAreaFromPoints(dragStart, point),
-    );
+    if (interaction.type === "draw") {
+      setDraftRect(
+        createRect(interaction.start, point),
+      );
+      return;
+    }
+
+    if (interaction.type === "move") {
+      const deltaX =
+        point.x - interaction.pointerStart.x;
+      const deltaY =
+        point.y - interaction.pointerStart.y;
+
+      if (
+        Math.abs(deltaX) > 0.1 ||
+        Math.abs(deltaY) > 0.1
+      ) {
+        setInteraction({
+          ...interaction,
+          hasMoved: true,
+        });
+      }
+
+      const nextRect: Rect = {
+        ...interaction.originalRect,
+        xPercent: clamp(
+          interaction.originalRect.xPercent + deltaX,
+          0,
+          100 -
+            interaction.originalRect.widthPercent,
+        ),
+        yPercent: clamp(
+          interaction.originalRect.yPercent + deltaY,
+          0,
+          100 -
+            interaction.originalRect.heightPercent,
+        ),
+      };
+
+      updateSpaceRectLocally(
+        interaction.spaceId,
+        nextRect,
+      );
+      return;
+    }
+
+    const original = interaction.originalRect;
+    const minimum = 1;
+
+    let left = original.xPercent;
+    let top = original.yPercent;
+    let right =
+      original.xPercent + original.widthPercent;
+    let bottom =
+      original.yPercent + original.heightPercent;
+
+    if (interaction.handle.includes("w")) {
+      left = clamp(point.x, 0, right - minimum);
+    }
+
+    if (interaction.handle.includes("e")) {
+      right = clamp(
+        point.x,
+        left + minimum,
+        100,
+      );
+    }
+
+    if (interaction.handle.includes("n")) {
+      top = clamp(point.y, 0, bottom - minimum);
+    }
+
+    if (interaction.handle.includes("s")) {
+      bottom = clamp(
+        point.y,
+        top + minimum,
+        100,
+      );
+    }
+
+    updateSpaceRectLocally(interaction.spaceId, {
+      xPercent: left,
+      yPercent: top,
+      widthPercent: right - left,
+      heightPercent: bottom - top,
+    });
   }
 
-  async function saveDrawnArea(area: DraftArea) {
-    if (!selectedSpace) {
+  async function finishPointerAction(
+    event: React.PointerEvent<HTMLDivElement>,
+  ) {
+    if (!interaction) {
       return;
     }
 
     if (
-      area.widthPercent < 1 ||
-      area.heightPercent < 1
+      mapRef.current?.hasPointerCapture(
+        interaction.pointerId,
+      )
     ) {
-      window.alert(
-        "Please drag a larger area. The selected area is too small.",
+      mapRef.current.releasePointerCapture(
+        interaction.pointerId,
+      );
+    }
+
+    const completedInteraction = interaction;
+    setInteraction(null);
+
+    if (completedInteraction.type === "draw") {
+      const point = getPoint(
+        event.clientX,
+        event.clientY,
       );
 
-      setDraftArea(null);
+      const rect =
+        point === null
+          ? draftRect
+          : createRect(
+              completedInteraction.start,
+              point,
+            );
+
+      if (
+        !rect ||
+        rect.widthPercent < 1 ||
+        rect.heightPercent < 1
+      ) {
+        setDraftRect(null);
+        window.alert(
+          "Please draw a larger rectangle.",
+        );
+        return;
+      }
+
+      setDraftRect(rect);
+      setCreateModal({
+        mode: "create",
+        rect,
+        form: emptySpaceForm(),
+      });
+      return;
+    }
+
+    if (
+      completedInteraction.type === "move" &&
+      !completedInteraction.hasMoved
+    ) {
+      const clickedSpace = spaces.find(
+        (space) =>
+          space.id === completedInteraction.spaceId,
+      );
+
+      if (clickedSpace) {
+        selectSpace(clickedSpace);
+      }
+      return;
+    }
+
+    const changedSpace = spaces.find(
+      (space) =>
+        space.id === completedInteraction.spaceId,
+    );
+    const changedRect = changedSpace
+      ? rectFromSpace(changedSpace)
+      : null;
+
+    if (!changedRect) {
       return;
     }
 
     try {
-      setIsSavingPosition(true);
-      setActionMessage("");
+      setIsSaving(true);
 
-      const updatedSpace =
+      const updated =
         await updateSpaceMapPosition(
-          selectedSpace.id,
-          {
-            xPercent: Number(
-              area.xPercent.toFixed(4),
-            ),
-            yPercent: Number(
-              area.yPercent.toFixed(4),
-            ),
-            widthPercent: Number(
-              area.widthPercent.toFixed(4),
-            ),
-            heightPercent: Number(
-              area.heightPercent.toFixed(4),
-            ),
-            rotation: 0,
-            iconName: "area",
-          },
+          completedInteraction.spaceId,
+          buildMapRequest(changedRect),
         );
 
-      setSpaces((currentSpaces) =>
-        currentSpaces.map((space) =>
-          space.id === updatedSpace.id
-            ? updatedSpace
-            : space,
-        ),
-      );
-
-      setWidthPercent(
-        toNumber(updatedSpace.widthPercent) ??
-          area.widthPercent,
-      );
-
-      setHeightPercent(
-        toNumber(updatedSpace.heightPercent) ??
-          area.heightPercent,
-      );
-
-      setDraftArea(null);
-
+      replaceSpace(updated);
       setActionMessage(
-        `${updatedSpace.code} area saved successfully.`,
+        completedInteraction.type === "move"
+          ? `${updated.code} moved successfully.`
+          : `${updated.code} resized successfully.`,
       );
     } catch (error) {
-      setDraftArea(null);
+      updateSpaceRectLocally(
+        completedInteraction.spaceId,
+        completedInteraction.originalRect,
+      );
 
       window.alert(
         error instanceof Error
           ? error.message
-          : "Unable to save the selected area.",
+          : "Unable to save the rectangle.",
       );
     } finally {
-      setIsSavingPosition(false);
+      setIsSaving(false);
     }
   }
 
-  async function handlePointerUp(
-    event: React.PointerEvent<HTMLDivElement>,
-  ) {
-    if (!dragStart || !isDrawingArea) {
-      return;
-    }
-
+  function cancelPointerAction() {
     if (
-      event.currentTarget.hasPointerCapture(
-        event.pointerId,
-      )
+      interaction &&
+      interaction.type !== "draw"
     ) {
-      event.currentTarget.releasePointerCapture(
-        event.pointerId,
+      updateSpaceRectLocally(
+        interaction.spaceId,
+        interaction.originalRect,
       );
     }
 
-    const endPoint = getPointerPercent(event);
-
-    setDragStart(null);
-    setIsDrawingArea(false);
-
-    if (!endPoint) {
-      setDraftArea(null);
-      return;
-    }
-
-    const completedArea = createAreaFromPoints(
-      dragStart,
-      endPoint,
-    );
-
-    setDraftArea(completedArea);
-
-    await saveDrawnArea(completedArea);
+    setInteraction(null);
+    setDraftRect(null);
   }
 
-  function handlePointerCancel(
-    event: React.PointerEvent<HTMLDivElement>,
-  ) {
-    if (
-      event.currentTarget.hasPointerCapture(
-        event.pointerId,
-      )
-    ) {
-      event.currentTarget.releasePointerCapture(
-        event.pointerId,
-      );
-    }
-
-    setDragStart(null);
-    setDraftArea(null);
-    setIsDrawingArea(false);
-  }
-
-  async function handleSaveSelectedSpaceSettings() {
-    if (!selectedSpace) {
+  async function handleCreateSpace() {
+    if (!createModal || !selectedFloor) {
       return;
     }
 
-    const xPercent = toNumber(
-      selectedSpace.xPercent,
+    const request = buildSpaceRequest(
+      createModal.form,
+      selectedFloor.id,
     );
 
-    const yPercent = toNumber(
-      selectedSpace.yPercent,
-    );
+    if (!request.code) {
+      window.alert("Space code is required.");
+      return;
+    }
 
-    if (xPercent === null || yPercent === null) {
-      window.alert(
-        "Please click and drag on the map first to assign this area.",
-      );
+    if (!request.name) {
+      window.alert("Space name is required.");
       return;
     }
 
     if (
-      !Number.isFinite(widthPercent) ||
-      widthPercent <= 0 ||
-      widthPercent > 100
+      !Number.isInteger(request.capacity) ||
+      request.capacity < 1
     ) {
       window.alert(
-        "Width must be greater than 0 and not more than 100.",
+        "Capacity must be a whole number of at least 1.",
       );
       return;
     }
-
-    if (
-      !Number.isFinite(heightPercent) ||
-      heightPercent <= 0 ||
-      heightPercent > 100
-    ) {
-      window.alert(
-        "Height must be greater than 0 and not more than 100.",
-      );
-      return;
-    }
-
-    const adjustedWidth = Math.min(
-      widthPercent,
-      100 - xPercent,
-    );
-
-    const adjustedHeight = Math.min(
-      heightPercent,
-      100 - yPercent,
-    );
 
     try {
-      setIsSavingPosition(true);
+      setIsSaving(true);
       setActionMessage("");
 
-      const updatedSpace =
+      const created =
+        await createManagedSpace(request);
+
+      const positioned =
         await updateSpaceMapPosition(
-          selectedSpace.id,
-          {
-            xPercent,
-            yPercent,
-            widthPercent: adjustedWidth,
-            heightPercent: adjustedHeight,
-            rotation: 0,
-            iconName: "area",
-          },
+          created.id,
+          buildMapRequest(createModal.rect),
         );
 
-      setSpaces((currentSpaces) =>
-        currentSpaces.map((space) =>
-          space.id === updatedSpace.id
-            ? updatedSpace
-            : space,
-        ),
-      );
-
-      setWidthPercent(
-        toNumber(updatedSpace.widthPercent) ??
-          adjustedWidth,
-      );
-
-      setHeightPercent(
-        toNumber(updatedSpace.heightPercent) ??
-          adjustedHeight,
-      );
-
+      setSpaces((current) => [
+        ...current,
+        positioned,
+      ]);
+      setSelectedSpaceId(positioned.id);
+      setCreateModal(null);
+      setDraftRect(null);
+      setMode("select");
       setActionMessage(
-        `${updatedSpace.code} area size updated.`,
+        `${positioned.code} created and placed successfully.`,
       );
     } catch (error) {
       window.alert(
         error instanceof Error
           ? error.message
-          : "Unable to update area size.",
+          : "Unable to create the space.",
       );
     } finally {
-      setIsSavingPosition(false);
+      setIsSaving(false);
     }
   }
 
-  async function handleRemoveSelectedSpacePosition() {
-    if (!selectedSpace) {
+  async function handleSaveEdit() {
+    if (
+      !selectedSpace ||
+      !selectedFloor ||
+      !editRect
+    ) {
       return;
     }
 
+    const request = buildSpaceRequest(
+      editForm,
+      selectedFloor.id,
+    ) as UpdateSpaceRequest;
+
+    try {
+      setIsSaving(true);
+
+      const details = await updateManagedSpace(
+        selectedSpace.id,
+        request,
+      );
+
+      const position =
+        await updateSpaceMapPosition(
+          selectedSpace.id,
+          buildMapRequest(editRect),
+        );
+
+      const merged: ManagedSpace = {
+        ...details,
+        ...position,
+      };
+
+      replaceSpace(merged);
+      setEditModalOpen(false);
+      setActionMessage(
+        `${merged.code} updated successfully.`,
+      );
+    } catch (error) {
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : "Unable to save changes.",
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleAssignExistingSpace() {
+    if (
+      !selectedSpace ||
+      !assignTargetId
+    ) {
+      window.alert(
+        "Choose an unassigned space first.",
+      );
+      return;
+    }
+
+    const sourceRect = rectFromSpace(selectedSpace);
+
+    if (!sourceRect) {
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+
+      const target =
+        await updateSpaceMapPosition(
+          assignTargetId,
+          buildMapRequest(sourceRect),
+        );
+
+      const source =
+        await removeSpaceMapPosition(
+          selectedSpace.id,
+        );
+
+      replaceSpace(source);
+      replaceSpace(target);
+      setSelectedSpaceId(target.id);
+      setAssignModalOpen(false);
+      setActionMessage(
+        `${target.code} is now assigned to this rectangle.`,
+      );
+    } catch (error) {
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : "Unable to assign the space.",
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleRemoveFromMap(
+    space: ManagedSpace,
+  ) {
     const confirmed = window.confirm(
-      `Remove "${selectedSpace.code}" from this floor map?`,
+      `Remove "${space.code}" from the floor plan? The space record will remain.`,
     );
 
     if (!confirmed) {
@@ -543,81 +1094,102 @@ export default function FloorMapManagementPage() {
     }
 
     try {
-      setIsSavingPosition(true);
-      setActionMessage("");
+      setIsSaving(true);
 
-      const updatedSpace =
-        await removeSpaceMapPosition(
-          selectedSpace.id,
-        );
+      const updated =
+        await removeSpaceMapPosition(space.id);
 
-      setSpaces((currentSpaces) =>
-        currentSpaces.map((space) =>
-          space.id === updatedSpace.id
-            ? updatedSpace
-            : space,
-        ),
-      );
-
-      setDraftArea(null);
-
+      replaceSpace(updated);
+      setSelectedSpaceId(0);
+      setMenuSpaceId(null);
       setActionMessage(
-        `${updatedSpace.code} was removed from the map.`,
+        `${updated.code} was removed from the floor plan.`,
       );
     } catch (error) {
       window.alert(
         error instanceof Error
           ? error.message
-          : "Unable to remove space area.",
+          : "Unable to remove the rectangle.",
       );
     } finally {
-      setIsSavingPosition(false);
+      setIsSaving(false);
     }
   }
 
-  const placedSpaceCount =
-    spacesOnSelectedFloor.filter(
-      (space) =>
-        space.xPercent !== null &&
-        space.yPercent !== null &&
-        space.widthPercent !== null &&
-        space.heightPercent !== null,
-    ).length;
+  async function handleDeactivate(
+    space: ManagedSpace,
+  ) {
+    const confirmed = window.confirm(
+      `Deactivate "${space.code}"?`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+
+      const updated =
+        await deactivateManagedSpace(space.id);
+
+      replaceSpace(updated);
+      setSelectedSpaceId(0);
+      setMenuSpaceId(null);
+      setActionMessage(
+        `${updated.code} was deactivated.`,
+      );
+    } catch (error) {
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : "Unable to deactivate the space.",
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  function renderResizeHandle(
+    space: ManagedSpace,
+    handle: ResizeHandle,
+    positionClass: string,
+    cursorClass: string,
+  ) {
+    return (
+      <span
+        role="button"
+        tabIndex={-1}
+        onPointerDown={(event) =>
+          beginResize(event, space, handle)
+        }
+        className={`absolute z-50 h-4 w-4 rounded-sm border-2 border-pink-700 bg-white shadow ${positionClass} ${cursorClass}`}
+      />
+    );
+  }
+
+  function closeCreateModal() {
+    setCreateModal(null);
+    setDraftRect(null);
+    setMode("select");
+  }
 
   return (
-    <div className="mx-auto max-w-7xl">
+    <div className="mx-auto max-w-[1500px]">
       <section className="overflow-hidden rounded-[2.5rem] border border-[#d8d0bf] bg-[#e7e3d2] shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="relative bg-gradient-to-br from-[#c9d2bd] via-[#e8e3d3] to-[#f6efe2] px-8 py-10 dark:from-slate-950 dark:via-slate-900 dark:to-[#06070b] sm:px-12">
-          <div className="absolute right-[-40px] top-[-40px] h-64 w-64 rounded-full bg-pink-300/20 blur-3xl dark:bg-pink-500/10" />
+          <p className="text-xs font-bold uppercase tracking-[0.35em] text-[#6d7a64] dark:text-slate-400">
+            HR Management
+          </p>
 
-          <div className="absolute bottom-[-60px] left-[-30px] h-72 w-72 rounded-full bg-[#87977b]/30 blur-3xl dark:bg-orange-500/10" />
+          <h2 className="mt-5 text-5xl font-black tracking-tight text-white drop-shadow-sm sm:text-6xl">
+            Floor Map Designer
+          </h2>
 
-          <div className="relative z-10 flex flex-col justify-between gap-8 lg:flex-row lg:items-end">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.35em] text-[#6d7a64] dark:text-slate-400">
-                HR Management
-              </p>
-
-              <h2 className="mt-5 text-5xl font-black tracking-tight text-white drop-shadow-sm dark:text-white sm:text-6xl">
-                Floor Map Management
-              </h2>
-
-              <p className="mt-5 max-w-2xl text-base leading-7 text-[#5e6558] dark:text-slate-300">
-                Draw bookable areas directly over the
-                uploaded room image. Employees will later
-                select these areas like seats in a movie
-                booking system.
-              </p>
-            </div>
-
-            <a
-              href="/location-management"
-              className="rounded-2xl border border-white/70 bg-white/70 px-5 py-3 text-center text-sm font-bold text-[#5f6658] shadow-sm backdrop-blur transition hover:bg-white dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-300 dark:hover:bg-slate-900"
-            >
-              <i className="fa-solid fa-building mr-2 text-[#c65f2e] dark:text-orange-300" />
-              Office / Floor Management
-            </a>
-          </div>
+          <p className="mt-5 max-w-3xl text-base leading-7 text-[#5e6558] dark:text-slate-300">
+            Create and manage bookable areas directly on
+            the floor plan.
+          </p>
         </div>
       </section>
 
@@ -629,65 +1201,32 @@ export default function FloorMapManagementPage() {
 
       {isLoading && (
         <section className="mt-8 rounded-[2rem] border border-[#d8d0bf] bg-[#f8f3e7] p-12 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-[#ded5c2] border-t-[#c65f2e] dark:border-slate-700 dark:border-t-orange-300" />
-
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-[#ded5c2] border-t-[#c65f2e]" />
           <p className="mt-5 font-bold text-[#5f6658] dark:text-slate-300">
-            Loading floor map data...
+            Loading floor map...
           </p>
         </section>
       )}
 
       {!isLoading && loadError && (
-        <section className="mt-8 rounded-[2rem] border border-red-200 bg-red-50 p-8 text-center dark:border-red-900/60 dark:bg-red-950/40">
-          <div className="text-4xl">⚠️</div>
-
-          <h3 className="mt-4 text-lg font-bold text-red-900 dark:text-red-200">
-            Unable to load data
-          </h3>
-
-          <p className="mt-2 text-sm text-red-700 dark:text-red-300">
+        <section className="mt-8 rounded-[2rem] border border-red-200 bg-red-50 p-8 text-center">
+          <p className="font-bold text-red-700">
             {loadError}
           </p>
-
-          <button
-            type="button"
-            onClick={() => window.location.reload()}
-            className="mt-6 rounded-2xl bg-red-600 px-5 py-3 font-bold text-white hover:bg-red-700"
-          >
-            Try Again
-          </button>
         </section>
       )}
 
       {!isLoading &&
         !loadError &&
-        floorsWithImages.length === 0 && (
-          <section className="mt-8 rounded-[2rem] border border-amber-200 bg-amber-50 p-8 text-center dark:border-amber-900/60 dark:bg-amber-950/30">
-            <div className="text-5xl">🗺️</div>
-
-            <h3 className="mt-4 text-xl font-black text-amber-900 dark:text-amber-200">
-              No room image uploaded yet
-            </h3>
-
-            <p className="mt-2 text-sm text-amber-800 dark:text-amber-300">
-              Upload a room or floor-plan image from
-              Office / Floor Management first.
-            </p>
-          </section>
-        )}
-
-      {!isLoading &&
-        !loadError &&
-        floorsWithImages.length > 0 && (
+        floorsWithPlans.length > 0 && (
           <>
             <section className="mt-8 grid gap-5 sm:grid-cols-3">
               <div className="rounded-[2rem] border border-[#d8d0bf] bg-[#f8f3e7] p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
                 <p className="text-sm font-bold text-[#74786d] dark:text-slate-400">
                   Floors With Plans
                 </p>
-
                 <p className="mt-3 text-4xl font-black text-[#3f463b] dark:text-white">
-                  {floorsWithImages.length}
+                  {floorsWithPlans.length}
                 </p>
               </div>
 
@@ -695,7 +1234,6 @@ export default function FloorMapManagementPage() {
                 <p className="text-sm font-bold text-[#74786d] dark:text-slate-400">
                   Active Spaces
                 </p>
-
                 <p className="mt-3 text-4xl font-black text-[#3f463b] dark:text-white">
                   {spacesOnSelectedFloor.length}
                 </p>
@@ -703,49 +1241,36 @@ export default function FloorMapManagementPage() {
 
               <div className="rounded-[2rem] border border-pink-200 bg-pink-50 p-6 dark:border-pink-900/60 dark:bg-pink-950/30">
                 <p className="text-sm font-bold text-pink-700 dark:text-pink-200">
-                  Assigned Areas
+                  Placed Areas
                 </p>
-
                 <p className="mt-3 text-4xl font-black text-pink-900 dark:text-pink-100">
                   {placedSpaceCount}
                 </p>
               </div>
             </section>
 
-            <section className="mt-8 grid gap-8 lg:grid-cols-[360px_1fr]">
-              <aside className="h-fit rounded-[2rem] border border-[#d8d0bf] bg-[#f8f3e7] p-7 shadow-sm dark:border-slate-800 dark:bg-slate-900 lg:sticky lg:top-28">
-                <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#c65f2e] dark:text-orange-300">
-                  Map Settings
-                </p>
-
-                <h3 className="mt-2 text-2xl font-black text-[#3f463b] dark:text-white">
-                  Draw bookable area
-                </h3>
-
-                <div className="mt-6 space-y-5">
+            <section className="mt-8 rounded-[2rem] border border-[#d8d0bf] bg-[#f8f3e7] p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+              <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+                <div className="grid w-full gap-4 sm:grid-cols-[minmax(220px,360px)_auto] sm:items-end xl:w-auto">
                   <div>
                     <label
                       htmlFor="floor-select"
-                      className="mb-2 block text-sm font-bold text-[#5f6658] dark:text-slate-300"
+                      className={labelClassName}
                     >
-                      Floor plan
+                      Floor
                     </label>
 
                     <select
                       id="floor-select"
                       value={selectedFloorId}
-                      onChange={(event) => {
+                      onChange={(event) =>
                         setSelectedFloorId(
                           Number(event.target.value),
-                        );
-
-                        setSelectedSpaceId(0);
-                        setDraftArea(null);
-                        setActionMessage("");
-                      }}
+                        )
+                      }
                       className={selectClassName}
                     >
-                      {floorsWithImages.map((floor) => (
+                      {floorsWithPlans.map((floor) => (
                         <option
                           key={floor.id}
                           value={floor.id}
@@ -757,370 +1282,800 @@ export default function FloorMapManagementPage() {
                     </select>
                   </div>
 
-                  <div>
-                    <label
-                      htmlFor="space-select"
-                      className="mb-2 block text-sm font-bold text-[#5f6658] dark:text-slate-300"
-                    >
-                      Space / area
-                    </label>
-
-                    <select
-                      id="space-select"
-                      value={selectedSpaceId}
-                      onChange={(event) => {
-                        setSelectedSpaceId(
-                          Number(event.target.value),
-                        );
-
-                        setDraftArea(null);
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMode("select");
+                        setDraftRect(null);
+                        setMenuSpaceId(null);
                         setActionMessage("");
                       }}
-                      className={selectClassName}
-                    >
-                      <option value={0}>
-                        Select space
-                      </option>
-
-                      {spacesOnSelectedFloor.map(
-                        (space) => (
-                          <option
-                            key={space.id}
-                            value={space.id}
-                          >
-                            {space.code} · {space.name}
-                          </option>
-                        ),
-                      )}
-                    </select>
-
-                    {spacesOnSelectedFloor.length ===
-                      0 && (
-                      <p className="mt-2 text-sm font-semibold text-red-600 dark:text-red-300">
-                        No active spaces found on this
-                        floor. Create spaces first from
-                        Space Management.
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label
-                        htmlFor="width-percent"
-                        className="mb-2 block text-sm font-bold text-[#5f6658] dark:text-slate-300"
-                      >
-                        Width %
-                      </label>
-
-                      <input
-                        id="width-percent"
-                        type="number"
-                        min={1}
-                        max={100}
-                        step={0.5}
-                        value={widthPercent}
-                        onChange={(event) =>
-                          setWidthPercent(
-                            Number(event.target.value),
-                          )
-                        }
-                        className={inputClassName}
-                      />
-                    </div>
-
-                    <div>
-                      <label
-                        htmlFor="height-percent"
-                        className="mb-2 block text-sm font-bold text-[#5f6658] dark:text-slate-300"
-                      >
-                        Height %
-                      </label>
-
-                      <input
-                        id="height-percent"
-                        type="number"
-                        min={1}
-                        max={100}
-                        step={0.5}
-                        value={heightPercent}
-                        onChange={(event) =>
-                          setHeightPercent(
-                            Number(event.target.value),
-                          )
-                        }
-                        className={inputClassName}
-                      />
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      void handleSaveSelectedSpaceSettings()
-                    }
-                    disabled={
-                      !selectedSpace ||
-                      isSavingPosition
-                    }
-                    className="w-full rounded-2xl bg-[#c65f2e] px-5 py-3 font-bold text-white transition hover:bg-[#a94f26] disabled:cursor-not-allowed disabled:bg-slate-400 dark:bg-orange-500 dark:hover:bg-orange-600"
-                  >
-                    {isSavingPosition
-                      ? "Saving..."
-                      : "Save Area Size"}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      void handleRemoveSelectedSpacePosition()
-                    }
-                    disabled={
-                      !selectedSpace ||
-                      isSavingPosition
-                    }
-                    className="w-full rounded-2xl border border-red-300 bg-white px-5 py-3 font-bold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400 dark:border-red-900/60 dark:bg-slate-950 dark:text-red-300 dark:hover:bg-red-950/30"
-                  >
-                    Remove Area From Map
-                  </button>
-
-                  <div className="rounded-2xl border border-pink-200 bg-pink-50 p-4 text-sm font-semibold leading-6 text-pink-700 dark:border-pink-900/60 dark:bg-pink-950/30 dark:text-pink-300">
-                    Select a space and then click and drag
-                    across the room image. Release the
-                    mouse when the required area is
-                    covered.
-                  </div>
-
-                  <div className="rounded-2xl border border-green-200 bg-green-50 p-4 text-sm font-semibold text-green-700 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-300">
-                    Green indicates an active area.
-                  </div>
-
-                  <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">
-                    Red indicates maintenance or an
-                    inactive area.
-                  </div>
-                </div>
-              </aside>
-
-              <main className="rounded-[2rem] border border-[#d8d0bf] bg-[#f8f3e7] p-7 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-                {selectedFloor?.floorPlanUrl ? (
-                  <>
-                    <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#c65f2e] dark:text-orange-300">
-                          Room Plan
-                        </p>
-
-                        <h3 className="mt-2 text-2xl font-black text-[#3f463b] dark:text-white">
-                          {
-                            selectedFloor.office
-                              .name
-                          }{" "}
-                          · {selectedFloor.name}
-                        </h3>
-
-                        <p className="mt-2 text-sm leading-6 text-[#74786d] dark:text-slate-400">
-                          Choose a space from the left,
-                          then click and drag across the
-                          image to assign its selectable
-                          booking area.
-                        </p>
-                      </div>
-
-                      {isSavingPosition && (
-                        <span className="rounded-full bg-pink-100 px-3 py-1 text-xs font-bold text-pink-600 dark:bg-pink-500/20 dark:text-pink-300">
-                          Saving...
-                        </span>
-                      )}
-                    </div>
-
-                    <div
-                      ref={mapRef}
-                      role="application"
-                      tabIndex={0}
-                      onPointerDown={
-                        handlePointerDown
-                      }
-                      onPointerMove={
-                        handlePointerMove
-                      }
-                      onPointerUp={(event) =>
-                        void handlePointerUp(event)
-                      }
-                      onPointerCancel={
-                        handlePointerCancel
-                      }
-                      className={`relative touch-none overflow-hidden rounded-[2rem] border border-[#ded6c7] bg-[#f3efe3] select-none dark:border-slate-800 dark:bg-slate-950 ${
-                        selectedSpace &&
-                        !isSavingPosition
-                          ? "cursor-crosshair"
-                          : "cursor-default"
+                      className={`rounded-2xl px-5 py-3 text-sm font-bold transition ${
+                        mode === "select"
+                          ? "bg-[#3f463b] text-white"
+                          : "border border-[#ded6c7] bg-white text-[#5f6658] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300"
                       }`}
                     >
-                      <img
-                        src={
-                          selectedFloor.floorPlanUrl
-                        }
-                        alt={`${selectedFloor.name} floor plan`}
-                        className="pointer-events-none block w-full select-none"
-                        draggable={false}
-                      />
+                      Select
+                    </button>
 
-                      {spacesOnSelectedFloor.map(
-                        (space) => {
-                          const x = toNumber(
-                            space.xPercent,
-                          );
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMode("draw");
+                        setDraftRect(null);
+                        setMenuSpaceId(null);
+                        setActionMessage(
+                          "Drag on the floor plan to create a new space.",
+                        );
+                      }}
+                      className={`rounded-2xl px-5 py-3 text-sm font-bold transition ${
+                        mode === "draw"
+                          ? "bg-[#c65f2e] text-white"
+                          : "border border-[#ded6c7] bg-white text-[#5f6658] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300"
+                      }`}
+                    >
+                      + Draw New Space
+                    </button>
+                  </div>
+                </div>
 
-                          const y = toNumber(
-                            space.yPercent,
-                          );
+                <div className="flex items-center gap-3">
+                  {isSaving && (
+                    <span className="rounded-full bg-amber-100 px-4 py-2 text-xs font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                      Saving...
+                    </span>
+                  )}
 
-                          const width = toNumber(
-                            space.widthPercent,
-                          );
+                  <a
+                    href="/location-management"
+                    className="rounded-2xl border border-[#ded6c7] bg-white px-5 py-3 text-sm font-bold text-[#5f6658] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300"
+                  >
+                    Office / Floor Management
+                  </a>
+                </div>
+              </div>
 
-                          const height = toNumber(
-                            space.heightPercent,
-                          );
+              <div
+                ref={mapRef}
+                role="application"
+                tabIndex={0}
+                onPointerDown={beginMapAction}
+                onPointerMove={handlePointerMove}
+                onPointerUp={(event) =>
+                  void finishPointerAction(event)
+                }
+                onPointerCancel={cancelPointerAction}
+                onContextMenu={(event) =>
+                  event.preventDefault()
+                }
+                className={`relative touch-none overflow-visible rounded-[2rem] border border-[#ded6c7] bg-[#f3efe3] select-none dark:border-slate-800 dark:bg-slate-950 ${
+                  mode === "draw"
+                    ? "cursor-crosshair"
+                    : mode === "duplicate"
+                      ? "cursor-copy"
+                      : "cursor-default"
+                }`}
+              >
+                {selectedFloor?.floorPlanUrl && (
+                  <img
+                    src={selectedFloor.floorPlanUrl}
+                    alt={`${selectedFloor.name} floor plan`}
+                    className="pointer-events-none block w-full rounded-[2rem] select-none"
+                    draggable={false}
+                  />
+                )}
 
-                          if (
-                            x === null ||
-                            y === null ||
-                            width === null ||
-                            height === null
-                          ) {
-                            return null;
-                          }
+                {spacesOnSelectedFloor.map((space) => {
+                  const rect = rectFromSpace(space);
 
-                          const isSelected =
-                            space.id ===
-                            selectedSpaceId;
+                  if (!rect) {
+                    return null;
+                  }
 
-                          const isUnavailable =
-                            space.status ===
-                              "MAINTENANCE" ||
-                            space.status ===
-                              "INACTIVE" ||
-                            !space.isActive;
+                  const isSelected =
+                    selectedSpaceId === space.id;
+                  const showMenu =
+                    menuSpaceId === space.id;
+                  const isUnavailable =
+                    space.status !== "ACTIVE";
 
-                          return (
-                            <button
-                              key={space.id}
-                              type="button"
-                              onPointerDown={(
-                                event,
-                              ) => {
-                                event.stopPropagation();
-                              }}
-                              onClick={(event) => {
-                                event.stopPropagation();
+                  return (
+                    <button
+                      key={space.id}
+                      type="button"
+                      onPointerDown={(event) =>
+                        beginMove(event, space)
+                      }
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        selectSpace(space);
+                      }}
+                      onContextMenu={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        selectSpace(space);
+                      }}
+                      className={`group absolute flex items-center justify-center rounded-xl border-2 transition ${
+                        isSelected
+                          ? "z-30 border-pink-700 bg-pink-400/45 ring-4 ring-pink-300/40"
+                          : isUnavailable
+                            ? "z-10 border-red-700 bg-red-500/45 hover:bg-red-500/55"
+                            : "z-10 border-green-700 bg-green-400/40 hover:bg-green-400/55"
+                      }`}
+                      style={{
+                        left: `${rect.xPercent}%`,
+                        top: `${rect.yPercent}%`,
+                        width: `${rect.widthPercent}%`,
+                        height: `${rect.heightPercent}%`,
+                      }}
+                    >
+                      <span className="pointer-events-none max-w-[90%] rounded-lg bg-white/90 px-2 py-1 text-center text-[9px] font-black leading-tight text-[#3f463b] shadow-sm backdrop-blur dark:bg-slate-950/85 dark:text-white sm:text-xs">
+                        <span className="block truncate">
+                          {space.name}
+                        </span>
 
-                                setSelectedSpaceId(
-                                  space.id,
-                                );
+                        <span className="mt-0.5 block text-[8px] font-bold uppercase tracking-wide sm:text-[10px]">
+                          {isUnavailable
+                            ? "Unavailable"
+                            : "Active"}
+                        </span>
+                      </span>
 
-                                setDraftArea(null);
-                              }}
-                              className={`group absolute flex items-center justify-center rounded-xl border-2 transition ${
-                                isSelected
-                                  ? "z-20 border-pink-600 bg-pink-400/45 ring-4 ring-pink-300/40"
-                                  : isUnavailable
-                                    ? "z-10 border-red-700 bg-red-500/45 hover:bg-red-500/55"
-                                    : "z-10 border-green-700 bg-green-400/40 hover:bg-green-400/55"
-                              }`}
-                              style={{
-                                left: `${x}%`,
-                                top: `${y}%`,
-                                width: `${width}%`,
-                                height: `${height}%`,
-                              }}
-                              title={`${space.code} - ${space.name}`}
-                            >
-                              <span className="pointer-events-none max-w-[90%] rounded-lg bg-white/90 px-2 py-1 text-center text-[9px] font-black leading-tight text-[#3f463b] shadow-sm backdrop-blur dark:bg-slate-950/85 dark:text-white sm:text-xs">
-                                <span className="block truncate">
-                                  {space.name}
-                                </span>
+                      {isSelected &&
+                        mode === "select" && (
+                          <>
+                            {renderResizeHandle(
+                              space,
+                              "nw",
+                              "-left-2 -top-2",
+                              "cursor-nw-resize",
+                            )}
+                            {renderResizeHandle(
+                              space,
+                              "ne",
+                              "-right-2 -top-2",
+                              "cursor-ne-resize",
+                            )}
+                            {renderResizeHandle(
+                              space,
+                              "sw",
+                              "-bottom-2 -left-2",
+                              "cursor-sw-resize",
+                            )}
+                            {renderResizeHandle(
+                              space,
+                              "se",
+                              "-bottom-2 -right-2",
+                              "cursor-se-resize",
+                            )}
+                          </>
+                        )}
 
-                                <span
-                                  className={`mt-0.5 block text-[8px] font-bold uppercase tracking-wide sm:text-[10px] ${
-                                    isUnavailable
-                                      ? "text-red-700 dark:text-red-300"
-                                      : "text-green-700 dark:text-green-300"
-                                  }`}
-                                >
-                                  {isUnavailable
-                                    ? "Unavailable"
-                                    : "Active Area"}
-                                </span>
-                              </span>
-
-                              <span className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 hidden w-max max-w-60 -translate-x-1/2 rounded-xl border border-[#ded6c7] bg-white px-3 py-2 text-left text-xs font-semibold text-[#3f463b] shadow-xl group-hover:block dark:border-slate-700 dark:bg-slate-900 dark:text-white">
-                                <span className="block">
-                                  {space.code} ·{" "}
-                                  {space.name}
-                                </span>
-
-                                <span className="mt-1 block font-normal text-[#74786d] dark:text-slate-400">
-                                  Capacity:{" "}
-                                  {space.capacity}
-                                </span>
-
-                                <span className="mt-1 block font-normal text-[#74786d] dark:text-slate-400">
-                                  Select this space and
-                                  drag on the image to
-                                  redraw it.
-                                </span>
-                              </span>
-                            </button>
-                          );
-                        },
-                      )}
-
-                      {draftArea && (
+                      {showMenu && (
                         <div
-                          className="pointer-events-none absolute z-30 rounded-xl border-2 border-dashed border-pink-600 bg-pink-400/35 shadow-lg"
-                          style={{
-                            left: `${draftArea.xPercent}%`,
-                            top: `${draftArea.yPercent}%`,
-                            width: `${draftArea.widthPercent}%`,
-                            height: `${draftArea.heightPercent}%`,
-                          }}
+                          onPointerDown={(event) =>
+                            event.stopPropagation()
+                          }
+                          onClick={(event) =>
+                            event.stopPropagation()
+                          }
+                          className="absolute left-1/2 top-full z-[80] mt-3 w-64 -translate-x-1/2 overflow-hidden rounded-2xl border border-slate-700 bg-[#201719] text-left text-sm text-white shadow-2xl"
                         >
-                          <div className="absolute left-2 top-2 rounded-lg bg-pink-600 px-2 py-1 text-[10px] font-bold text-white shadow">
-                            New area
+                          <div className="border-b border-white/10 px-4 py-3">
+                            <p className="truncate font-black">
+                              {space.name}
+                            </p>
+                            <p className="mt-1 text-xs text-white/60">
+                              {space.code}
+                            </p>
                           </div>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              openEditModal(space)
+                            }
+                            className="block w-full px-4 py-3 text-left font-semibold hover:bg-white/10"
+                          >
+                            Edit Details
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              startDuplicate(space)
+                            }
+                            className="block w-full px-4 py-3 text-left font-semibold hover:bg-white/10"
+                          >
+                            Duplicate
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              openAssignModal(space)
+                            }
+                            className="block w-full px-4 py-3 text-left font-semibold hover:bg-white/10"
+                          >
+                            Assign Existing Space
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              void handleRemoveFromMap(
+                                space,
+                              )
+                            }
+                            className="block w-full px-4 py-3 text-left font-semibold text-amber-300 hover:bg-white/10"
+                          >
+                            Remove From Map
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              void handleDeactivate(space)
+                            }
+                            className="block w-full border-t border-white/10 px-4 py-3 text-left font-semibold text-red-300 hover:bg-white/10"
+                          >
+                            Deactivate Space
+                          </button>
                         </div>
                       )}
-                    </div>
+                    </button>
+                  );
+                })}
 
-                    <div className="mt-5 flex flex-wrap gap-3 text-xs font-bold">
-                      <span className="rounded-full border border-green-300 bg-green-100 px-3 py-1.5 text-green-800 dark:border-green-900 dark:bg-green-950/40 dark:text-green-300">
-                        <span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm bg-green-500" />
-                        Active
-                      </span>
-
-                      <span className="rounded-full border border-red-300 bg-red-100 px-3 py-1.5 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
-                        <span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm bg-red-500" />
-                        Unavailable
-                      </span>
-
-                      <span className="rounded-full border border-pink-300 bg-pink-100 px-3 py-1.5 text-pink-800 dark:border-pink-900 dark:bg-pink-950/40 dark:text-pink-300">
-                        <span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm bg-pink-500" />
-                        Selected
-                      </span>
-                    </div>
-                  </>
-                ) : (
-                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-8 text-center text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300">
-                    No image found for the selected
-                    floor.
+                {draftRect && (
+                  <div
+                    className="pointer-events-none absolute z-40 rounded-xl border-2 border-dashed border-pink-700 bg-pink-400/35 shadow-lg"
+                    style={{
+                      left: `${draftRect.xPercent}%`,
+                      top: `${draftRect.yPercent}%`,
+                      width: `${draftRect.widthPercent}%`,
+                      height: `${draftRect.heightPercent}%`,
+                    }}
+                  >
+                    <span className="absolute left-2 top-2 rounded-lg bg-pink-700 px-2 py-1 text-[10px] font-bold text-white">
+                      New area
+                    </span>
                   </div>
                 )}
-              </main>
+              </div>
+
+              <div className="mt-5 flex flex-wrap gap-3 text-xs font-bold">
+                <span className="rounded-full border border-green-300 bg-green-100 px-3 py-1.5 text-green-800">
+                  Green: Active
+                </span>
+
+                <span className="rounded-full border border-red-300 bg-red-100 px-3 py-1.5 text-red-800">
+                  Red: Unavailable
+                </span>
+
+                <span className="rounded-full border border-pink-300 bg-pink-100 px-3 py-1.5 text-pink-800">
+                  Pink: Selected
+                </span>
+              </div>
             </section>
           </>
         )}
+
+      {!isLoading &&
+        !loadError &&
+        floorsWithPlans.length === 0 && (
+          <section className="mt-8 rounded-[2rem] border border-amber-200 bg-amber-50 p-8 text-center">
+            Upload a floor-plan image first.
+          </section>
+        )}
+
+      {createModal && (
+        <SpaceFormModal
+          title={
+            createModal.mode === "duplicate"
+              ? "Create Duplicated Space"
+              : "Create New Space"
+          }
+          form={createModal.form}
+          setForm={(form) =>
+            setCreateModal((current) =>
+              current
+                ? {
+                    ...current,
+                    form,
+                  }
+                : current,
+            )
+          }
+          isSaving={isSaving}
+          onCancel={closeCreateModal}
+          onSave={() => void handleCreateSpace()}
+          saveLabel="Create Space"
+        />
+      )}
+
+      {editModalOpen &&
+        selectedSpace &&
+        editRect && (
+          <EditSpaceModal
+            form={editForm}
+            setForm={setEditForm}
+            rect={editRect}
+            setRect={setEditRect}
+            isSaving={isSaving}
+            onCancel={() =>
+              setEditModalOpen(false)
+            }
+            onSave={() =>
+              void handleSaveEdit()
+            }
+          />
+        )}
+
+      {assignModalOpen && selectedSpace && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-[2rem] border border-[#ded6c7] bg-[#fffdf6] p-7 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+            <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#c65f2e]">
+              Assign
+            </p>
+
+            <h3 className="mt-2 text-2xl font-black text-[#3f463b] dark:text-white">
+              Assign Existing Space
+            </h3>
+
+            <p className="mt-3 text-sm leading-6 text-[#74786d] dark:text-slate-400">
+              The selected rectangle will be transferred
+              from {selectedSpace.code} to an unplaced
+              existing space.
+            </p>
+
+            <div className="mt-6">
+              <label className={labelClassName}>
+                Unplaced Space
+              </label>
+
+              <select
+                value={assignTargetId}
+                onChange={(event) =>
+                  setAssignTargetId(
+                    Number(event.target.value),
+                  )
+                }
+                className={selectClassName}
+              >
+                <option value={0}>
+                  Select a space
+                </option>
+
+                {unplacedSpaces.map((space) => (
+                  <option
+                    key={space.id}
+                    value={space.id}
+                  >
+                    {space.code} · {space.name}
+                  </option>
+                ))}
+              </select>
+
+              {unplacedSpaces.length === 0 && (
+                <p className="mt-3 text-sm font-semibold text-amber-700">
+                  There are no unplaced active spaces on
+                  this floor.
+                </p>
+              )}
+            </div>
+
+            <div className="mt-7 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() =>
+                  setAssignModalOpen(false)
+                }
+                className="rounded-2xl border border-[#ded6c7] bg-white px-5 py-3 font-bold text-[#5f6658]"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  void handleAssignExistingSpace()
+                }
+                disabled={
+                  isSaving ||
+                  assignTargetId === 0
+                }
+                className="rounded-2xl bg-[#c65f2e] px-5 py-3 font-bold text-white disabled:bg-slate-400"
+              >
+                {isSaving
+                  ? "Assigning..."
+                  : "Assign Space"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+type SpaceFormModalProps = {
+  title: string;
+  form: SpaceForm;
+  setForm: (form: SpaceForm) => void;
+  isSaving: boolean;
+  onCancel: () => void;
+  onSave: () => void;
+  saveLabel: string;
+};
+
+function SpaceFormModal({
+  title,
+  form,
+  setForm,
+  isSaving,
+  onCancel,
+  onSave,
+  saveLabel,
+}: SpaceFormModalProps) {
+  return (
+    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-[2rem] border border-[#ded6c7] bg-[#fffdf6] p-7 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#c65f2e]">
+              Space
+            </p>
+
+            <h3 className="mt-2 text-2xl font-black text-[#3f463b] dark:text-white">
+              {title}
+            </h3>
+          </div>
+
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-xl border border-[#ded6c7] bg-white px-3 py-2 font-black text-[#5f6658]"
+          >
+            ✕
+          </button>
+        </div>
+
+        <SpaceFields
+          form={form}
+          setForm={setForm}
+        />
+
+        <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={isSaving}
+            className="rounded-2xl border border-[#ded6c7] bg-white px-5 py-3 font-bold text-[#5f6658]"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={isSaving}
+            className="rounded-2xl bg-[#c65f2e] px-6 py-3 font-bold text-white disabled:bg-slate-400"
+          >
+            {isSaving ? "Saving..." : saveLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type EditSpaceModalProps = {
+  form: SpaceForm;
+  setForm: (form: SpaceForm) => void;
+  rect: Rect;
+  setRect: (rect: Rect) => void;
+  isSaving: boolean;
+  onCancel: () => void;
+  onSave: () => void;
+};
+
+function EditSpaceModal({
+  form,
+  setForm,
+  rect,
+  setRect,
+  isSaving,
+  onCancel,
+  onSave,
+}: EditSpaceModalProps) {
+  return (
+    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+      <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-[2rem] border border-[#ded6c7] bg-[#fffdf6] p-7 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#c65f2e]">
+              Edit
+            </p>
+
+            <h3 className="mt-2 text-2xl font-black text-[#3f463b] dark:text-white">
+              Space Details
+            </h3>
+          </div>
+
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-xl border border-[#ded6c7] bg-white px-3 py-2 font-black text-[#5f6658]"
+          >
+            ✕
+          </button>
+        </div>
+
+        <SpaceFields
+          form={form}
+          setForm={setForm}
+        />
+
+        <div className="mt-7 border-t border-[#ded6c7] pt-6 dark:border-slate-700">
+          <p className="mb-4 text-xs font-bold uppercase tracking-[0.25em] text-[#c65f2e]">
+            Position and Size
+          </p>
+
+          <div className="grid gap-4 sm:grid-cols-4">
+            {(
+              [
+                ["X %", "xPercent"],
+                ["Y %", "yPercent"],
+                ["Width %", "widthPercent"],
+                ["Height %", "heightPercent"],
+              ] as const
+            ).map(([label, key]) => (
+              <div key={key}>
+                <label className={labelClassName}>
+                  {label}
+                </label>
+
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={0.25}
+                  value={roundPercent(rect[key])}
+                  onChange={(event) =>
+                    setRect({
+                      ...rect,
+                      [key]: Number(
+                        event.target.value,
+                      ),
+                    })
+                  }
+                  className={inputClassName}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={isSaving}
+            className="rounded-2xl border border-[#ded6c7] bg-white px-5 py-3 font-bold text-[#5f6658]"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={isSaving}
+            className="rounded-2xl bg-[#c65f2e] px-6 py-3 font-bold text-white disabled:bg-slate-400"
+          >
+            {isSaving
+              ? "Saving..."
+              : "Save Changes"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type SpaceFieldsProps = {
+  form: SpaceForm;
+  setForm: (form: SpaceForm) => void;
+};
+
+function SpaceFields({
+  form,
+  setForm,
+}: SpaceFieldsProps) {
+  return (
+    <>
+      <div className="mt-7 grid gap-5 sm:grid-cols-2">
+        <div>
+          <label className={labelClassName}>
+            Space Code
+          </label>
+
+          <input
+            value={form.code}
+            onChange={(event) =>
+              setForm({
+                ...form,
+                code: event.target.value,
+              })
+            }
+            className={inputClassName}
+          />
+        </div>
+
+        <div>
+          <label className={labelClassName}>
+            Capacity
+          </label>
+
+          <input
+            type="number"
+            min={1}
+            value={form.capacity}
+            onChange={(event) =>
+              setForm({
+                ...form,
+                capacity: Number(
+                  event.target.value,
+                ),
+              })
+            }
+            className={inputClassName}
+          />
+        </div>
+
+        <div className="sm:col-span-2">
+          <label className={labelClassName}>
+            Space Name
+          </label>
+
+          <input
+            value={form.name}
+            onChange={(event) =>
+              setForm({
+                ...form,
+                name: event.target.value,
+              })
+            }
+            className={inputClassName}
+          />
+        </div>
+
+        <div>
+          <label className={labelClassName}>
+            Type
+          </label>
+
+          <select
+            value={form.type}
+            onChange={(event) =>
+              setForm({
+                ...form,
+                type: event.target
+                  .value as ResourceType,
+              })
+            }
+            className={selectClassName}
+          >
+            {resourceTypes.map((item) => (
+              <option
+                key={item.value}
+                value={item.value}
+              >
+                {item.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className={labelClassName}>
+            Status
+          </label>
+
+          <select
+            value={form.status}
+            onChange={(event) =>
+              setForm({
+                ...form,
+                status: event.target
+                  .value as ResourceStatus,
+              })
+            }
+            className={selectClassName}
+          >
+            {resourceStatuses.map((item) => (
+              <option
+                key={item.value}
+                value={item.value}
+              >
+                {item.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="sm:col-span-2">
+          <label className={labelClassName}>
+            Description
+          </label>
+
+          <textarea
+            rows={3}
+            value={form.description}
+            onChange={(event) =>
+              setForm({
+                ...form,
+                description: event.target.value,
+              })
+            }
+            className={inputClassName}
+          />
+        </div>
+
+        <div className="sm:col-span-2">
+          <label className={labelClassName}>
+            Amenities
+          </label>
+
+          <input
+            value={form.amenitiesText}
+            onChange={(event) =>
+              setForm({
+                ...form,
+                amenitiesText: event.target.value,
+              })
+            }
+            placeholder="TV, Whiteboard, Projector"
+            className={inputClassName}
+          />
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <label className="flex items-center gap-3 rounded-2xl border border-[#ded6c7] bg-white p-4 text-sm font-bold text-[#5f6658] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
+          <input
+            type="checkbox"
+            checked={form.requiresApproval}
+            onChange={(event) =>
+              setForm({
+                ...form,
+                requiresApproval:
+                  event.target.checked,
+              })
+            }
+            className="h-4 w-4"
+          />
+          Requires HR approval
+        </label>
+
+        <label className="flex items-center gap-3 rounded-2xl border border-[#ded6c7] bg-white p-4 text-sm font-bold text-[#5f6658] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
+          <input
+            type="checkbox"
+            checked={form.requiresManager}
+            onChange={(event) =>
+              setForm({
+                ...form,
+                requiresManager:
+                  event.target.checked,
+              })
+            }
+            className="h-4 w-4"
+          />
+          Requires manager
+        </label>
+      </div>
+    </>
   );
 }

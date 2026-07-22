@@ -1,7 +1,6 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getCurrentUser } from "@/services/auth/session-service";
 
 type RouteContext = {
@@ -16,11 +15,15 @@ const allowedMimeTypes = [
   "image/webp",
 ];
 
+const maxFileSize = 5 * 1024 * 1024;
+
 function canManageLocations(role: string): boolean {
   return role === "HR" || role === "SUPER_ADMIN";
 }
 
-async function getFloorId(context: RouteContext): Promise<number | null> {
+async function getFloorId(
+  context: RouteContext,
+): Promise<number | null> {
   const { floorId: floorIdValue } = await context.params;
   const floorId = Number(floorIdValue);
 
@@ -32,19 +35,41 @@ async function getFloorId(context: RouteContext): Promise<number | null> {
 }
 
 function getFileExtension(file: File): string {
-  if (file.type === "image/jpeg") {
-    return "jpg";
+  switch (file.type) {
+    case "image/jpeg":
+      return "jpg";
+
+    case "image/png":
+      return "png";
+
+    case "image/webp":
+      return "webp";
+
+    default:
+      return "jpg";
+  }
+}
+
+function getStoragePathFromPublicUrl(
+  publicUrl: string | null,
+  bucketName: string,
+): string | null {
+  if (!publicUrl) {
+    return null;
   }
 
-  if (file.type === "image/png") {
-    return "png";
+  const marker =
+    `/storage/v1/object/public/${bucketName}/`;
+
+  const markerIndex = publicUrl.indexOf(marker);
+
+  if (markerIndex < 0) {
+    return null;
   }
 
-  if (file.type === "image/webp") {
-    return "webp";
-  }
-
-  return "jpg";
+  return decodeURIComponent(
+    publicUrl.slice(markerIndex + marker.length),
+  );
 }
 
 export async function POST(
@@ -58,7 +83,8 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
-          message: "You must sign in to upload a floor plan.",
+          message:
+            "You must sign in to upload a room plan.",
         },
         {
           status: 401,
@@ -70,7 +96,8 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
-          message: "You do not have permission to upload floor plans.",
+          message:
+            "You do not have permission to upload room plans.",
         },
         {
           status: 403,
@@ -84,7 +111,7 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
-          message: "Invalid floor ID.",
+          message: "Invalid room ID.",
         },
         {
           status: 400,
@@ -102,7 +129,7 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
-          message: "Floor was not found.",
+          message: "Room was not found.",
         },
         {
           status: 404,
@@ -117,7 +144,8 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
-          message: "Please upload an image file.",
+          message:
+            "Please select a room-plan image.",
         },
         {
           status: 400,
@@ -125,25 +153,27 @@ export async function POST(
       );
     }
 
-    if (!allowedMimeTypes.includes(uploadedFile.type)) {
+    if (
+      !allowedMimeTypes.includes(uploadedFile.type)
+    ) {
       return NextResponse.json(
         {
           success: false,
-          message: "Only JPG, PNG, or WEBP images are allowed.",
+          message:
+            "Only JPG, PNG, or WEBP images are allowed.",
         },
         {
           status: 400,
         },
       );
     }
-
-    const maxFileSize = 5 * 1024 * 1024;
 
     if (uploadedFile.size > maxFileSize) {
       return NextResponse.json(
         {
           success: false,
-          message: "Image size cannot exceed 5MB.",
+          message:
+            "Room-plan image cannot exceed 5MB.",
         },
         {
           status: 400,
@@ -151,59 +181,141 @@ export async function POST(
       );
     }
 
-    const arrayBuffer = await uploadedFile.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    const supabaseUrl =
+      process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-    const uploadDirectory = path.join(
-      process.cwd(),
-      "public",
-      "uploads",
-      "floor-plans",
+    const serviceRoleKey =
+      process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl) {
+      throw new Error(
+        "NEXT_PUBLIC_SUPABASE_URL is missing.",
+      );
+    }
+
+    if (!serviceRoleKey) {
+      throw new Error(
+        "SUPABASE_SERVICE_ROLE_KEY is missing.",
+      );
+    }
+
+    const bucketName =
+      process.env.SUPABASE_ROOM_PLAN_BUCKET ??
+      "room-plans";
+
+    const extension =
+      getFileExtension(uploadedFile);
+
+    const storagePath =
+      `rooms/${floorId}/room-plan-${Date.now()}.${extension}`;
+
+    const buffer = Buffer.from(
+      await uploadedFile.arrayBuffer(),
     );
 
-    await mkdir(uploadDirectory, {
-      recursive: true,
-    });
+    const { error: uploadError } =
+      await supabaseAdmin.storage
+        .from(bucketName)
+        .upload(storagePath, buffer, {
+          contentType: uploadedFile.type,
+          cacheControl: "3600",
+          upsert: false,
+        });
 
-    const extension = getFileExtension(uploadedFile);
-    const fileName = `floor-${floorId}-${Date.now()}.${extension}`;
-    const filePath = path.join(uploadDirectory, fileName);
+    if (uploadError) {
+      console.error(
+        "Supabase upload error:",
+        uploadError,
+      );
 
-    await writeFile(filePath, buffer);
-
-    const publicUrl = `/uploads/floor-plans/${fileName}`;
-
-    const updatedFloor = await prisma.floor.update({
-      where: {
-        id: floorId,
-      },
-      data: {
-        floorPlanUrl: publicUrl,
-        floorPlanWidth: null,
-        floorPlanHeight: null,
-      },
-      include: {
-        office: {
-          select: {
-            id: true,
-            name: true,
-          },
+      return NextResponse.json(
+        {
+          success: false,
+          message: `Unable to store room plan: ${uploadError.message}`,
         },
-      },
-    });
+        {
+          status: 500,
+        },
+      );
+    }
 
-    return NextResponse.json({
-      success: true,
-      message: "Floor plan uploaded successfully.",
-      data: updatedFloor,
-    });
+    const { data: publicUrlData } =
+      supabaseAdmin.storage
+        .from(bucketName)
+        .getPublicUrl(storagePath);
+
+    const publicUrl = publicUrlData.publicUrl;
+
+    try {
+      const updatedFloor =
+        await prisma.floor.update({
+          where: {
+            id: floorId,
+          },
+          data: {
+            floorPlanUrl: publicUrl,
+            floorPlanWidth: null,
+            floorPlanHeight: null,
+          },
+          include: {
+            office: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        });
+
+      const oldStoragePath =
+        getStoragePathFromPublicUrl(
+          floor.floorPlanUrl,
+          bucketName,
+        );
+
+      if (
+        oldStoragePath &&
+        oldStoragePath !== storagePath
+      ) {
+        const { error: removeError } =
+          await supabaseAdmin.storage
+            .from(bucketName)
+            .remove([oldStoragePath]);
+
+        if (removeError) {
+          console.warn(
+            "Unable to remove old room plan:",
+            removeError,
+          );
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        message:
+          "Room plan uploaded successfully.",
+        data: updatedFloor,
+      });
+    } catch (databaseError) {
+      await supabaseAdmin.storage
+        .from(bucketName)
+        .remove([storagePath]);
+
+      throw databaseError;
+    }
   } catch (error) {
-    console.error("Failed to upload floor plan:", error);
+    console.error(
+      "Failed to upload room plan:",
+      error,
+    );
 
     return NextResponse.json(
       {
         success: false,
-        message: "Unable to upload floor plan.",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Unable to upload room plan.",
       },
       {
         status: 500,

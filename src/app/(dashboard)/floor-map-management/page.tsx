@@ -1,10 +1,5 @@
-import FloorMapManagementPage from "@/views/floor-map-management/FloorMapManagementPage";
-import ProtectedPage from "@/services/auth/ProtectedPage";
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return (
-    <ProtectedPage allowedRoles={["HR", "SUPER_ADMIN"]}>
-      <FloorMapManagementPage />
-    </ProtectedPage>
-  );
+  redirect("/room-area-management");
 }

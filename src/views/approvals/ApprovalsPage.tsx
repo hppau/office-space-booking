@@ -21,7 +21,7 @@ type ApprovalDialogState = {
 } | null;
 
 const inputClassName =
-  "w-full rounded-2xl border border-[#ded6c7] bg-[#fffdf6] px-4 py-3 text-sm font-medium text-[#3f463b] outline-none transition placeholder:text-[#aaa08c] focus:border-[#c65f2e] focus:ring-2 focus:ring-[#c65f2e]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-orange-300 dark:focus:ring-orange-300/20";
+  "w-full rounded-md border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 outline-none transition placeholder:text-[#aaa08c] focus:border-[#c65f2e] focus:ring-2 focus:ring-[#c65f2e]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-orange-300 dark:focus:ring-orange-300/20";
 
 function formatDate(dateValue: string): string {
   return new Intl.DateTimeFormat("en-SG", {
@@ -286,8 +286,8 @@ export default function ApprovalsPage() {
 
   return (
     <div className="mx-auto max-w-7xl">
-      <section className="overflow-hidden rounded-[2.5rem] border border-[#d8d0bf] bg-[#e7e3d2] shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="relative bg-gradient-to-br from-[#c9d2bd] via-[#e8e3d3] to-[#f6efe2] px-8 py-10 dark:from-slate-950 dark:via-slate-900 dark:to-[#06070b] sm:px-12">
+      <section className="overflow-hidden rounded-none border border-slate-200 bg-white shadow-none dark:border-slate-800 dark:bg-slate-900">
+        <div className="relative bg-gradient-to-br from-[#c9d2bd] via-[#e8e3d3] to-[#f6efe2] px-1 py-6 dark:from-slate-950 dark:via-slate-900 dark:to-[#06070b] sm:px-1">
           <div className="absolute right-[-40px] top-[-40px] h-64 w-64 rounded-full bg-pink-300/20 blur-3xl dark:bg-pink-500/10" />
           <div className="absolute bottom-[-60px] left-[-30px] h-72 w-72 rounded-full bg-[#87977b]/30 blur-3xl dark:bg-orange-500/10" />
 
@@ -297,7 +297,7 @@ export default function ApprovalsPage() {
                 Approval Management
               </p>
 
-              <h2 className="mt-5 text-5xl font-black tracking-tight text-white drop-shadow-sm dark:text-white sm:text-6xl">
+              <h2 className="mt-5 text-5xl font-black tracking-tight text-white drop-shadow-none dark:text-white sm:text-6xl">
                 Booking Approvals
               </h2>
 
@@ -312,7 +312,7 @@ export default function ApprovalsPage() {
               type="button"
               onClick={() => void loadApprovals()}
               disabled={isLoading}
-              className="rounded-2xl border border-white/70 bg-white/70 px-5 py-3 text-sm font-bold text-[#5f6658] shadow-sm backdrop-blur transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-300 dark:hover:bg-slate-900"
+              className="rounded-md border border-white/70 bg-white/70 px-5 py-3 text-sm font-bold text-slate-700 shadow-none backdrop-blur transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-300 dark:hover:bg-slate-900"
             >
               <i className="fa-solid fa-rotate-right mr-2 text-[#c65f2e] dark:text-orange-300" />
               Refresh
@@ -322,17 +322,17 @@ export default function ApprovalsPage() {
       </section>
 
       <section className="mt-8 grid gap-5 sm:grid-cols-3">
-        <div className="rounded-[2rem] border border-[#d8d0bf] bg-[#f8f3e7] p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <p className="text-sm font-bold text-[#74786d] dark:text-slate-400">
+        <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-none dark:border-slate-800 dark:bg-slate-900">
+          <p className="text-sm font-bold text-slate-500 dark:text-slate-400">
             Total Pending
           </p>
 
-          <p className="mt-3 text-4xl font-black text-[#3f463b] dark:text-white">
+          <p className="mt-3 text-4xl font-black text-slate-900 dark:text-white">
             {bookings.length}
           </p>
         </div>
 
-        <div className="rounded-[2rem] border border-purple-200 bg-purple-50 p-6 dark:border-purple-900/60 dark:bg-purple-950/30">
+        <div className="rounded-lg border border-purple-200 bg-purple-50 p-6 dark:border-purple-900/60 dark:bg-purple-950/30">
           <p className="text-sm font-bold text-purple-700 dark:text-purple-200">
             Manager Approval
           </p>
@@ -342,7 +342,7 @@ export default function ApprovalsPage() {
           </p>
         </div>
 
-        <div className="rounded-[2rem] border border-amber-200 bg-amber-50 p-6 dark:border-amber-900/60 dark:bg-amber-950/30">
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 dark:border-amber-900/60 dark:bg-amber-950/30">
           <p className="text-sm font-bold text-amber-700 dark:text-amber-200">
             HR Approval
           </p>
@@ -353,12 +353,12 @@ export default function ApprovalsPage() {
         </div>
       </section>
 
-      <section className="mt-8 rounded-[2rem] border border-[#d8d0bf] bg-[#f8f3e7] p-7 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <section className="mt-8 rounded-lg border border-slate-200 bg-white p-7 shadow-none dark:border-slate-800 dark:bg-slate-900">
         <div className="grid gap-4 md:grid-cols-[1fr_260px]">
           <div>
             <label
               htmlFor="approval-search"
-              className="mb-2 block text-sm font-bold text-[#5f6658] dark:text-slate-300"
+              className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300"
             >
               Search
             </label>
@@ -378,7 +378,7 @@ export default function ApprovalsPage() {
           <div>
             <label
               htmlFor="stage-filter"
-              className="mb-2 block text-sm font-bold text-[#5f6658] dark:text-slate-300"
+              className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300"
             >
               Approval stage
             </label>
@@ -409,17 +409,17 @@ export default function ApprovalsPage() {
       </section>
 
       {isLoading && (
-        <section className="mt-8 rounded-[2rem] border border-[#d8d0bf] bg-[#f8f3e7] p-12 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <section className="mt-8 rounded-lg border border-slate-200 bg-white p-12 text-center shadow-none dark:border-slate-800 dark:bg-slate-900">
           <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-[#ded5c2] border-t-[#c65f2e] dark:border-slate-700 dark:border-t-orange-300" />
 
-          <p className="mt-5 font-bold text-[#5f6658] dark:text-slate-300">
+          <p className="mt-5 font-bold text-slate-700 dark:text-slate-300">
             Loading pending approvals...
           </p>
         </section>
       )}
 
       {!isLoading && loadError && (
-        <section className="mt-8 rounded-[2rem] border border-red-200 bg-red-50 p-8 text-center dark:border-red-900/60 dark:bg-red-950/40">
+        <section className="mt-8 rounded-lg border border-red-200 bg-red-50 p-8 text-center dark:border-red-900/60 dark:bg-red-950/40">
           <div className="text-4xl">⚠️</div>
 
           <h3 className="mt-4 text-lg font-bold text-red-900 dark:text-red-200">
@@ -433,7 +433,7 @@ export default function ApprovalsPage() {
           <button
             type="button"
             onClick={() => void loadApprovals()}
-            className="mt-6 rounded-2xl bg-red-600 px-5 py-3 font-bold text-white transition hover:bg-red-700"
+            className="mt-6 rounded-md bg-red-600 px-5 py-3 font-bold text-white transition hover:bg-red-700"
           >
             Try Again
           </button>
@@ -443,14 +443,14 @@ export default function ApprovalsPage() {
       {!isLoading &&
         !loadError &&
         filteredBookings.length === 0 && (
-          <section className="mt-8 rounded-[2rem] border border-[#d8d0bf] bg-[#f8f3e7] p-12 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <section className="mt-8 rounded-lg border border-slate-200 bg-white p-12 text-center shadow-none dark:border-slate-800 dark:bg-slate-900">
             <div className="text-5xl">✅</div>
 
-            <h3 className="mt-5 text-xl font-black text-[#3f463b] dark:text-white">
+            <h3 className="mt-5 text-xl font-black text-slate-900 dark:text-white">
               No pending approvals
             </h3>
 
-            <p className="mt-2 text-[#74786d] dark:text-slate-400">
+            <p className="mt-2 text-slate-500 dark:text-slate-400">
               There are no booking requests matching the selected filters.
             </p>
           </section>
@@ -466,17 +466,17 @@ export default function ApprovalsPage() {
               return (
                 <article
                   key={booking.id}
-                  className="rounded-[2rem] border border-[#d8d0bf] bg-[#f8f3e7] p-7 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+                  className="rounded-lg border border-slate-200 bg-white p-7 shadow-none dark:border-slate-800 dark:bg-slate-900"
                 >
                   <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-start">
                     <div className="flex gap-4">
-                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-pink-100 text-2xl text-pink-500 dark:bg-pink-500/20 dark:text-pink-300">
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md bg-pink-100 text-2xl text-pink-500 dark:bg-pink-500/20 dark:text-pink-300">
                         {getResourceIcon(booking)}
                       </div>
 
                       <div>
                         <div className="flex flex-wrap items-center gap-3">
-                          <h3 className="text-xl font-black text-[#3f463b] dark:text-white">
+                          <h3 className="text-xl font-black text-slate-900 dark:text-white">
                             {booking.resource.name}
                           </h3>
 
@@ -491,7 +491,7 @@ export default function ApprovalsPage() {
                           </span>
                         </div>
 
-                        <p className="mt-1 text-sm text-[#74786d] dark:text-slate-400">
+                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                           {
                             booking.resource.floor.office
                               .name
@@ -500,14 +500,14 @@ export default function ApprovalsPage() {
                           {booking.resource.code}
                         </p>
 
-                        <p className="mt-3 text-sm text-[#5f6658] dark:text-slate-300">
+                        <p className="mt-3 text-sm text-slate-700 dark:text-slate-300">
                           <span className="font-bold">
                             Requested by:
                           </span>{" "}
                           {booking.user.fullName}
                         </p>
 
-                        <p className="mt-1 text-sm text-[#74786d] dark:text-slate-400">
+                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                           {booking.user.employeeCode ??
                             "No employee code"}{" "}
                           · {booking.user.email}
@@ -516,23 +516,23 @@ export default function ApprovalsPage() {
                     </div>
 
                     <div className="lg:text-right">
-                      <p className="text-sm text-[#74786d] dark:text-slate-400">
+                      <p className="text-sm text-slate-500 dark:text-slate-400">
                         Booking reference
                       </p>
 
-                      <p className="mt-1 font-black text-[#3f463b] dark:text-white">
+                      <p className="mt-1 font-black text-slate-900 dark:text-white">
                         {booking.bookingNumber}
                       </p>
                     </div>
                   </div>
 
-                  <dl className="mt-6 grid gap-4 rounded-[2rem] border border-[#ded6c7] bg-[#fffdf6] p-5 sm:grid-cols-2 lg:grid-cols-4 dark:border-slate-800 dark:bg-slate-950">
+                  <dl className="mt-6 grid gap-4 rounded-lg border border-slate-200 bg-white p-5 sm:grid-cols-2 lg:grid-cols-4 dark:border-slate-800 dark:bg-slate-950">
                     <div>
                       <dt className="text-xs font-bold uppercase tracking-wide text-[#87977b] dark:text-slate-500">
                         Date
                       </dt>
 
-                      <dd className="mt-2 font-bold text-[#3f463b] dark:text-white">
+                      <dd className="mt-2 font-bold text-slate-900 dark:text-white">
                         {formatDate(booking.startAt)}
                       </dd>
                     </div>
@@ -542,7 +542,7 @@ export default function ApprovalsPage() {
                         Time
                       </dt>
 
-                      <dd className="mt-2 font-bold text-[#3f463b] dark:text-white">
+                      <dd className="mt-2 font-bold text-slate-900 dark:text-white">
                         {formatTime(booking.startAt)} –{" "}
                         {formatTime(booking.endAt)}
                       </dd>
@@ -553,7 +553,7 @@ export default function ApprovalsPage() {
                         Attendees
                       </dt>
 
-                      <dd className="mt-2 font-bold text-[#3f463b] dark:text-white">
+                      <dd className="mt-2 font-bold text-slate-900 dark:text-white">
                         {booking.attendeeCount}
                       </dd>
                     </div>
@@ -563,7 +563,7 @@ export default function ApprovalsPage() {
                         Department
                       </dt>
 
-                      <dd className="mt-2 font-bold text-[#3f463b] dark:text-white">
+                      <dd className="mt-2 font-bold text-slate-900 dark:text-white">
                         {booking.user.department?.name ??
                           "Not assigned"}
                       </dd>
@@ -571,7 +571,7 @@ export default function ApprovalsPage() {
                   </dl>
 
                   <div className="mt-5">
-                    <p className="text-sm font-bold text-[#5f6658] dark:text-slate-300">
+                    <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
                       Booking reason
                     </p>
 
@@ -582,7 +582,7 @@ export default function ApprovalsPage() {
 
                   {equipment.length > 0 && (
                     <div className="mt-5">
-                      <p className="text-sm font-bold text-[#5f6658] dark:text-slate-300">
+                      <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
                         Required equipment
                       </p>
 
@@ -590,7 +590,7 @@ export default function ApprovalsPage() {
                         {equipment.map((item) => (
                           <span
                             key={item}
-                            className="rounded-full bg-[#eef0e2] px-3 py-1 text-xs font-semibold text-[#74786d] dark:bg-slate-800 dark:text-slate-300"
+                            className="rounded-full bg-[#eef0e2] px-3 py-1 text-xs font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-300"
                           >
                             {item}
                           </span>
@@ -600,8 +600,8 @@ export default function ApprovalsPage() {
                   )}
 
                   {booking.notes && (
-                    <div className="mt-5 rounded-2xl border border-[#ded6c7] bg-[#fffdf6] p-4 dark:border-slate-800 dark:bg-slate-950">
-                      <p className="text-sm font-bold text-[#5f6658] dark:text-slate-300">
+                    <div className="mt-5 rounded-md border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+                      <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
                         Additional notes
                       </p>
 
@@ -611,7 +611,7 @@ export default function ApprovalsPage() {
                     </div>
                   )}
 
-                  <div className="mt-6 flex flex-col gap-3 border-t border-[#ded6c7] pt-6 sm:flex-row sm:justify-end dark:border-slate-800">
+                  <div className="mt-6 flex flex-col gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:justify-end dark:border-slate-800">
                     <button
                       type="button"
                       onClick={() =>
@@ -620,7 +620,7 @@ export default function ApprovalsPage() {
                           "REJECT",
                         )
                       }
-                      className="rounded-2xl border border-red-300 bg-white px-5 py-3 font-bold text-red-700 transition hover:bg-red-50 dark:border-red-900/60 dark:bg-slate-950 dark:text-red-300 dark:hover:bg-red-950/30"
+                      className="rounded-md border border-red-300 bg-white px-5 py-3 font-bold text-red-700 transition hover:bg-red-50 dark:border-red-900/60 dark:bg-slate-950 dark:text-red-300 dark:hover:bg-red-950/30"
                     >
                       Reject
                     </button>
@@ -633,7 +633,7 @@ export default function ApprovalsPage() {
                           "APPROVE",
                         )
                       }
-                      className="rounded-2xl bg-[#c65f2e] px-5 py-3 font-bold text-white transition hover:bg-[#a94f26] dark:bg-orange-500 dark:hover:bg-orange-600"
+                      className="rounded-md bg-[#c65f2e] px-5 py-3 font-bold text-white transition hover:bg-[#a94f26] dark:bg-orange-500 dark:hover:bg-orange-600"
                     >
                       Approve
                     </button>
@@ -646,8 +646,8 @@ export default function ApprovalsPage() {
 
       {dialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-8">
-          <section className="w-full max-w-lg rounded-[2rem] border border-[#d8d0bf] bg-[#f8f3e7] shadow-2xl dark:border-slate-800 dark:bg-slate-900">
-            <header className="flex items-start justify-between border-b border-[#ded6c7] px-6 py-5 dark:border-slate-800">
+          <section className="w-full max-w-lg rounded-lg border border-slate-200 bg-white shadow-lg dark:border-slate-800 dark:bg-slate-900">
+            <header className="flex items-start justify-between border-b border-slate-200 px-6 py-5 dark:border-slate-800">
               <div>
                 <p
                   className={`text-sm font-bold ${
@@ -661,7 +661,7 @@ export default function ApprovalsPage() {
                     : "Reject booking"}
                 </p>
 
-                <h2 className="mt-1 text-xl font-black text-[#3f463b] dark:text-white">
+                <h2 className="mt-1 text-xl font-black text-slate-900 dark:text-white">
                   {
                     dialog.booking
                       .bookingNumber
@@ -673,24 +673,24 @@ export default function ApprovalsPage() {
                 type="button"
                 onClick={closeDialog}
                 disabled={isProcessing}
-                className="flex h-10 w-10 items-center justify-center rounded-full text-xl text-[#74786d] transition hover:bg-[#fffdf6] disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800"
+                className="flex h-10 w-10 items-center justify-center rounded-full text-xl text-slate-500 transition hover:bg-white disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800"
               >
                 ×
               </button>
             </header>
 
             <div className="px-6 py-6">
-              <div className="rounded-2xl border border-[#ded6c7] bg-[#fffdf6] p-5 dark:border-slate-800 dark:bg-slate-950">
-                <p className="font-black text-[#3f463b] dark:text-white">
+              <div className="rounded-md border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">
+                <p className="font-black text-slate-900 dark:text-white">
                   {dialog.booking.resource.name}
                 </p>
 
-                <p className="mt-1 text-sm text-[#74786d] dark:text-slate-400">
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                   Requested by{" "}
                   {dialog.booking.user.fullName}
                 </p>
 
-                <p className="mt-3 text-sm text-[#5f6658] dark:text-slate-300">
+                <p className="mt-3 text-sm text-slate-700 dark:text-slate-300">
                   {formatDate(
                     dialog.booking.startAt,
                   )}{" "}
@@ -707,7 +707,7 @@ export default function ApprovalsPage() {
 
               <label
                 htmlFor="approval-comment"
-                className="mt-6 block text-sm font-bold text-[#5f6658] dark:text-slate-300"
+                className="mt-6 block text-sm font-bold text-slate-700 dark:text-slate-300"
               >
                 {dialog.action === "REJECT"
                   ? "Rejection reason"
@@ -740,18 +740,18 @@ export default function ApprovalsPage() {
               </p>
 
               {dialogError && (
-                <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
+                <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
                   {dialogError}
                 </div>
               )}
             </div>
 
-            <footer className="flex flex-col-reverse gap-3 border-t border-[#ded6c7] px-6 py-5 sm:flex-row sm:justify-end dark:border-slate-800">
+            <footer className="flex flex-col-reverse gap-3 border-t border-slate-200 px-6 py-5 sm:flex-row sm:justify-end dark:border-slate-800">
               <button
                 type="button"
                 onClick={closeDialog}
                 disabled={isProcessing}
-                className="rounded-2xl border border-[#ded6c7] bg-[#fffdf6] px-5 py-3 font-bold text-[#5f6658] transition hover:bg-[#f3efe3] disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-800"
+                className="rounded-md border border-slate-200 bg-white px-5 py-3 font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-800"
               >
                 Cancel
               </button>
@@ -762,7 +762,7 @@ export default function ApprovalsPage() {
                   void handleDecision()
                 }
                 disabled={isProcessing}
-                className={`rounded-2xl px-6 py-3 font-bold text-white transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                className={`rounded-md px-6 py-3 font-bold text-white transition disabled:cursor-not-allowed disabled:opacity-60 ${
                   dialog.action === "APPROVE"
                     ? "bg-[#c65f2e] hover:bg-[#a94f26] dark:bg-orange-500 dark:hover:bg-orange-600"
                     : "bg-red-600 hover:bg-red-700"

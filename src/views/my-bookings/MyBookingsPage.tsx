@@ -288,7 +288,7 @@ export default function MyBookingsPage() {
         </Link>
       </section>
 
-      <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="mt-8 rounded-md border border-slate-200 bg-white p-6 shadow-none">
         <div className="grid gap-4 md:grid-cols-[1fr_240px]">
           <div>
             <label
@@ -343,7 +343,7 @@ export default function MyBookingsPage() {
       </section>
 
       {isLoading && (
-        <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-sm">
+        <section className="mt-8 rounded-md border border-slate-200 bg-white p-12 text-center shadow-none">
           <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" />
 
           <p className="mt-5 font-medium text-slate-700">
@@ -353,7 +353,7 @@ export default function MyBookingsPage() {
       )}
 
       {!isLoading && loadError && (
-        <section className="mt-8 rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
+        <section className="mt-8 rounded-md border border-red-200 bg-red-50 p-8 text-center">
           <div className="text-4xl">⚠️</div>
 
           <h3 className="mt-4 text-lg font-semibold text-red-900">
@@ -377,7 +377,7 @@ export default function MyBookingsPage() {
       {!isLoading &&
         !loadError &&
         filteredBookings.length === 0 && (
-          <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-sm">
+          <section className="mt-8 rounded-md border border-slate-200 bg-white p-12 text-center shadow-none">
             <div className="text-5xl">📅</div>
 
             <h3 className="mt-5 text-xl font-semibold text-slate-900">
@@ -408,11 +408,11 @@ export default function MyBookingsPage() {
               return (
                 <article
                   key={booking.id}
-                  className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+                  className="rounded-md border border-slate-200 bg-white p-6 shadow-none"
                 >
                   <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-start">
                     <div className="flex gap-4">
-                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-2xl">
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md bg-blue-50 text-2xl">
                         {getResourceIcon(booking)}
                       </div>
 
@@ -457,7 +457,7 @@ export default function MyBookingsPage() {
                     </div>
                   </div>
 
-                  <dl className="mt-6 grid gap-4 rounded-2xl bg-slate-50 p-5 sm:grid-cols-2 lg:grid-cols-4">
+                  <dl className="mt-6 grid gap-4 rounded-md bg-slate-50 p-5 sm:grid-cols-2 lg:grid-cols-4">
                     <div>
                       <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
                         Date
@@ -574,7 +574,7 @@ export default function MyBookingsPage() {
 
       {cancelBookingId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-8">
-          <section className="w-full max-w-lg rounded-3xl bg-white shadow-2xl">
+          <section className="w-full max-w-lg rounded-lg bg-white shadow-lg">
             <header className="flex items-start justify-between border-b border-slate-200 px-6 py-5">
               <div>
                 <p className="text-sm font-semibold text-red-600">

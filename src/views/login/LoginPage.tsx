@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import type { CurrentUser } from "@/models/auth";
 
-type LoginResponse = {
+type LoginApiResponse = {
   success: boolean;
   message: string;
   data?: {
@@ -14,19 +16,43 @@ type LoginResponse = {
   };
 };
 
+function isSupportedRole(
+  role: string,
+): role is CurrentUser["role"] {
+  return [
+    "SUPER_ADMIN",
+    "HR",
+    "MANAGER",
+    "EMPLOYEE",
+  ].includes(role);
+}
+
+function getHomeRoute(
+  role: CurrentUser["role"],
+): string {
+  switch (role) {
+    case "SUPER_ADMIN":
+    case "HR":
+      return "/room-management";
+
+    case "MANAGER":
+      return "/approvals";
+
+    case "EMPLOYEE":
+      return "/book";
+
+    default:
+      return "/";
+  }
+}
+
 export default function LoginPage() {
   const router = useRouter();
 
-  const [email, setEmail] = useState(
-    "employee@officebooking.local",
-  );
-
-  const [password, setPassword] =
-    useState("Password123!");
-
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [isSubmitting, setIsSubmitting] =
-    useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>,
@@ -39,17 +65,18 @@ export default function LoginPage() {
 
       const response = await fetch("/api/auth/login", {
         method: "POST",
+        credentials: "same-origin",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          email,
+          email: email.trim(),
           password,
         }),
       });
 
       const result =
-        (await response.json()) as LoginResponse;
+        (await response.json()) as LoginApiResponse;
 
       if (!response.ok || !result.success) {
         throw new Error(
@@ -57,7 +84,15 @@ export default function LoginPage() {
         );
       }
 
-      router.push("/dashboard");
+      const role = result.data?.role;
+
+      if (!role || !isSupportedRole(role)) {
+        throw new Error(
+          "The account role is missing or unsupported.",
+        );
+      }
+
+      router.replace(getHomeRoute(role));
       router.refresh();
     } catch (error) {
       setErrorMessage(
@@ -71,24 +106,24 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-12">
-      <section className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-xl">
+    <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-12 dark:bg-slate-950">
+      <section className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-xl dark:border-slate-800 dark:bg-slate-900">
         <div className="text-center">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-600 text-3xl text-white">
-            🏢
+            <i className="fa-solid fa-building" />
           </div>
 
-          <h1 className="mt-6 text-2xl font-bold text-slate-900">
-            Office Space Booking
+          <h1 className="mt-6 text-2xl font-bold text-slate-900 dark:text-white">
+            Office Room Booking
           </h1>
 
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
             Sign in using your company account.
           </p>
         </div>
 
         {errorMessage && (
-          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
+          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
             {errorMessage}
           </div>
         )}
@@ -97,7 +132,7 @@ export default function LoginPage() {
           <div>
             <label
               htmlFor="email"
-              className="block text-sm font-semibold text-slate-700"
+              className="block text-sm font-semibold text-slate-700 dark:text-slate-300"
             >
               Email address
             </label>
@@ -111,14 +146,15 @@ export default function LoginPage() {
               }
               required
               autoComplete="email"
-              className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              placeholder="name@company.com"
+              className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:ring-blue-900"
             />
           </div>
 
           <div className="mt-5">
             <label
               htmlFor="password"
-              className="block text-sm font-semibold text-slate-700"
+              className="block text-sm font-semibold text-slate-700 dark:text-slate-300"
             >
               Password
             </label>
@@ -132,7 +168,8 @@ export default function LoginPage() {
               }
               required
               autoComplete="current-password"
-              className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              placeholder="Enter your password"
+              className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:ring-blue-900"
             />
           </div>
 
@@ -145,23 +182,15 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="mt-6 rounded-xl bg-slate-50 p-4 text-xs leading-6 text-slate-500">
-          <p>
-            Employee: employee@officebooking.local
-          </p>
-
-          <p>
-            Manager: manager@officebooking.local
-          </p>
-
-          <p>HR: hr@officebooking.local</p>
-
-          <p>Admin: admin@officebooking.local</p>
-
-          <p className="mt-2 font-semibold">
-            Development password: Password123!
-          </p>
-        </div>
+        <p className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
+          Need an account?{" "}
+          <Link
+            href="/register"
+            className="font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400"
+          >
+            Register
+          </Link>
+        </p>
       </section>
     </main>
   );

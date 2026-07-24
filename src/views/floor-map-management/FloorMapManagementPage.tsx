@@ -30,13 +30,13 @@ import type {
 } from "@/models/resource";
 
 const selectClassName =
-  "w-full rounded-2xl border border-[#ded6c7] bg-[#fffdf6] px-4 py-3 text-sm font-medium text-[#3f463b] outline-none transition focus:border-[#c65f2e] focus:ring-2 focus:ring-[#c65f2e]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-orange-300 dark:focus:ring-orange-300/20";
+  "w-full rounded-md border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 outline-none transition focus:border-[#c65f2e] focus:ring-2 focus:ring-[#c65f2e]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-orange-300 dark:focus:ring-orange-300/20";
 
 const inputClassName =
-  "w-full rounded-2xl border border-[#ded6c7] bg-[#fffdf6] px-4 py-3 text-sm font-medium text-[#3f463b] outline-none transition placeholder:text-[#aaa08c] focus:border-[#c65f2e] focus:ring-2 focus:ring-[#c65f2e]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-orange-300 dark:focus:ring-orange-300/20";
+  "w-full rounded-md border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 outline-none transition placeholder:text-[#aaa08c] focus:border-[#c65f2e] focus:ring-2 focus:ring-[#c65f2e]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-orange-300 dark:focus:ring-orange-300/20";
 
 const labelClassName =
-  "mb-2 block text-sm font-bold text-[#5f6658] dark:text-slate-300";
+  "mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300";
 
 const resourceTypes: Array<{
   value: ResourceType;
@@ -1176,13 +1176,13 @@ export default function FloorMapManagementPage() {
 
   return (
     <div className="mx-auto max-w-[1500px]">
-      <section className="overflow-hidden rounded-[2.5rem] border border-[#d8d0bf] bg-[#e7e3d2] shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="relative bg-gradient-to-br from-[#c9d2bd] via-[#e8e3d3] to-[#f6efe2] px-8 py-10 dark:from-slate-950 dark:via-slate-900 dark:to-[#06070b] sm:px-12">
+      <section className="overflow-hidden rounded-none border border-slate-200 bg-white shadow-none dark:border-slate-800 dark:bg-slate-900">
+        <div className="relative bg-gradient-to-br from-[#c9d2bd] via-[#e8e3d3] to-[#f6efe2] px-1 py-6 dark:from-slate-950 dark:via-slate-900 dark:to-[#06070b] sm:px-1">
           <p className="text-xs font-bold uppercase tracking-[0.35em] text-[#6d7a64] dark:text-slate-400">
             HR Management
           </p>
 
-          <h2 className="mt-5 text-5xl font-black tracking-tight text-white drop-shadow-sm sm:text-6xl">
+          <h2 className="mt-5 text-5xl font-black tracking-tight text-white drop-shadow-none sm:text-6xl">
             Floor Map Designer
           </h2>
 
@@ -1194,22 +1194,22 @@ export default function FloorMapManagementPage() {
       </section>
 
       {actionMessage && (
-        <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-700 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-300">
+        <div className="mt-6 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-700 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-300">
           {actionMessage}
         </div>
       )}
 
       {isLoading && (
-        <section className="mt-8 rounded-[2rem] border border-[#d8d0bf] bg-[#f8f3e7] p-12 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <section className="mt-8 rounded-lg border border-slate-200 bg-white p-12 text-center shadow-none dark:border-slate-800 dark:bg-slate-900">
           <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-[#ded5c2] border-t-[#c65f2e]" />
-          <p className="mt-5 font-bold text-[#5f6658] dark:text-slate-300">
+          <p className="mt-5 font-bold text-slate-700 dark:text-slate-300">
             Loading floor map...
           </p>
         </section>
       )}
 
       {!isLoading && loadError && (
-        <section className="mt-8 rounded-[2rem] border border-red-200 bg-red-50 p-8 text-center">
+        <section className="mt-8 rounded-lg border border-red-200 bg-red-50 p-8 text-center">
           <p className="font-bold text-red-700">
             {loadError}
           </p>
@@ -1221,25 +1221,25 @@ export default function FloorMapManagementPage() {
         floorsWithPlans.length > 0 && (
           <>
             <section className="mt-8 grid gap-5 sm:grid-cols-3">
-              <div className="rounded-[2rem] border border-[#d8d0bf] bg-[#f8f3e7] p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-                <p className="text-sm font-bold text-[#74786d] dark:text-slate-400">
+              <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-none dark:border-slate-800 dark:bg-slate-900">
+                <p className="text-sm font-bold text-slate-500 dark:text-slate-400">
                   Floors With Plans
                 </p>
-                <p className="mt-3 text-4xl font-black text-[#3f463b] dark:text-white">
+                <p className="mt-3 text-4xl font-black text-slate-900 dark:text-white">
                   {floorsWithPlans.length}
                 </p>
               </div>
 
-              <div className="rounded-[2rem] border border-[#d8d0bf] bg-[#f8f3e7] p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-                <p className="text-sm font-bold text-[#74786d] dark:text-slate-400">
+              <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-none dark:border-slate-800 dark:bg-slate-900">
+                <p className="text-sm font-bold text-slate-500 dark:text-slate-400">
                   Active Spaces
                 </p>
-                <p className="mt-3 text-4xl font-black text-[#3f463b] dark:text-white">
+                <p className="mt-3 text-4xl font-black text-slate-900 dark:text-white">
                   {spacesOnSelectedFloor.length}
                 </p>
               </div>
 
-              <div className="rounded-[2rem] border border-pink-200 bg-pink-50 p-6 dark:border-pink-900/60 dark:bg-pink-950/30">
+              <div className="rounded-lg border border-pink-200 bg-pink-50 p-6 dark:border-pink-900/60 dark:bg-pink-950/30">
                 <p className="text-sm font-bold text-pink-700 dark:text-pink-200">
                   Placed Areas
                 </p>
@@ -1249,7 +1249,7 @@ export default function FloorMapManagementPage() {
               </div>
             </section>
 
-            <section className="mt-8 rounded-[2rem] border border-[#d8d0bf] bg-[#f8f3e7] p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+            <section className="mt-8 rounded-lg border border-slate-200 bg-white p-5 shadow-none dark:border-slate-800 dark:bg-slate-900 sm:p-7">
               <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
                 <div className="grid w-full gap-4 sm:grid-cols-[minmax(220px,360px)_auto] sm:items-end xl:w-auto">
                   <div>
@@ -1291,10 +1291,10 @@ export default function FloorMapManagementPage() {
                         setMenuSpaceId(null);
                         setActionMessage("");
                       }}
-                      className={`rounded-2xl px-5 py-3 text-sm font-bold transition ${
+                      className={`rounded-md px-5 py-3 text-sm font-bold transition ${
                         mode === "select"
                           ? "bg-[#3f463b] text-white"
-                          : "border border-[#ded6c7] bg-white text-[#5f6658] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300"
+                          : "border border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300"
                       }`}
                     >
                       Select
@@ -1310,10 +1310,10 @@ export default function FloorMapManagementPage() {
                           "Drag on the floor plan to create a new space.",
                         );
                       }}
-                      className={`rounded-2xl px-5 py-3 text-sm font-bold transition ${
+                      className={`rounded-md px-5 py-3 text-sm font-bold transition ${
                         mode === "draw"
                           ? "bg-[#c65f2e] text-white"
-                          : "border border-[#ded6c7] bg-white text-[#5f6658] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300"
+                          : "border border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300"
                       }`}
                     >
                       + Draw New Space
@@ -1330,7 +1330,7 @@ export default function FloorMapManagementPage() {
 
                   <a
                     href="/location-management"
-                    className="rounded-2xl border border-[#ded6c7] bg-white px-5 py-3 text-sm font-bold text-[#5f6658] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300"
+                    className="rounded-md border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300"
                   >
                     Office / Floor Management
                   </a>
@@ -1350,7 +1350,7 @@ export default function FloorMapManagementPage() {
                 onContextMenu={(event) =>
                   event.preventDefault()
                 }
-                className={`relative touch-none overflow-visible rounded-[2rem] border border-[#ded6c7] bg-[#f3efe3] select-none dark:border-slate-800 dark:bg-slate-950 ${
+                className={`relative touch-none overflow-visible rounded-lg border border-slate-200 bg-slate-50 select-none dark:border-slate-800 dark:bg-slate-950 ${
                   mode === "draw"
                     ? "cursor-crosshair"
                     : mode === "duplicate"
@@ -1362,7 +1362,7 @@ export default function FloorMapManagementPage() {
                   <img
                     src={selectedFloor.floorPlanUrl}
                     alt={`${selectedFloor.name} floor plan`}
-                    className="pointer-events-none block w-full rounded-[2rem] select-none"
+                    className="pointer-events-none block w-full rounded-lg select-none"
                     draggable={false}
                   />
                 )}
@@ -1411,7 +1411,7 @@ export default function FloorMapManagementPage() {
                         height: `${rect.heightPercent}%`,
                       }}
                     >
-                      <span className="pointer-events-none max-w-[90%] rounded-lg bg-white/90 px-2 py-1 text-center text-[9px] font-black leading-tight text-[#3f463b] shadow-sm backdrop-blur dark:bg-slate-950/85 dark:text-white sm:text-xs">
+                      <span className="pointer-events-none max-w-[90%] rounded-lg bg-white/90 px-2 py-1 text-center text-[9px] font-black leading-tight text-slate-900 shadow-none backdrop-blur dark:bg-slate-950/85 dark:text-white sm:text-xs">
                         <span className="block truncate">
                           {space.name}
                         </span>
@@ -1461,7 +1461,7 @@ export default function FloorMapManagementPage() {
                           onClick={(event) =>
                             event.stopPropagation()
                           }
-                          className="absolute left-1/2 top-full z-[80] mt-3 w-64 -translate-x-1/2 overflow-hidden rounded-2xl border border-slate-700 bg-[#201719] text-left text-sm text-white shadow-2xl"
+                          className="absolute left-1/2 top-full z-[80] mt-3 w-64 -translate-x-1/2 overflow-hidden rounded-md border border-slate-700 bg-[#201719] text-left text-sm text-white shadow-lg"
                         >
                           <div className="border-b border-white/10 px-4 py-3">
                             <p className="truncate font-black">
@@ -1566,7 +1566,7 @@ export default function FloorMapManagementPage() {
       {!isLoading &&
         !loadError &&
         floorsWithPlans.length === 0 && (
-          <section className="mt-8 rounded-[2rem] border border-amber-200 bg-amber-50 p-8 text-center">
+          <section className="mt-8 rounded-lg border border-amber-200 bg-amber-50 p-8 text-center">
             Upload a floor-plan image first.
           </section>
         )}
@@ -1616,16 +1616,16 @@ export default function FloorMapManagementPage() {
 
       {assignModalOpen && selectedSpace && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-[2rem] border border-[#ded6c7] bg-[#fffdf6] p-7 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+          <div className="w-full max-w-lg rounded-lg border border-slate-200 bg-white p-7 shadow-lg dark:border-slate-700 dark:bg-slate-900">
             <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#c65f2e]">
               Assign
             </p>
 
-            <h3 className="mt-2 text-2xl font-black text-[#3f463b] dark:text-white">
+            <h3 className="mt-2 text-2xl font-black text-slate-900 dark:text-white">
               Assign Existing Space
             </h3>
 
-            <p className="mt-3 text-sm leading-6 text-[#74786d] dark:text-slate-400">
+            <p className="mt-3 text-sm leading-6 text-slate-500 dark:text-slate-400">
               The selected rectangle will be transferred
               from {selectedSpace.code} to an unplaced
               existing space.
@@ -1673,7 +1673,7 @@ export default function FloorMapManagementPage() {
                 onClick={() =>
                   setAssignModalOpen(false)
                 }
-                className="rounded-2xl border border-[#ded6c7] bg-white px-5 py-3 font-bold text-[#5f6658]"
+                className="rounded-md border border-slate-200 bg-white px-5 py-3 font-bold text-slate-700"
               >
                 Cancel
               </button>
@@ -1687,7 +1687,7 @@ export default function FloorMapManagementPage() {
                   isSaving ||
                   assignTargetId === 0
                 }
-                className="rounded-2xl bg-[#c65f2e] px-5 py-3 font-bold text-white disabled:bg-slate-400"
+                className="rounded-md bg-[#c65f2e] px-5 py-3 font-bold text-white disabled:bg-slate-400"
               >
                 {isSaving
                   ? "Assigning..."
@@ -1722,14 +1722,14 @@ function SpaceFormModal({
 }: SpaceFormModalProps) {
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-[2rem] border border-[#ded6c7] bg-[#fffdf6] p-7 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-slate-200 bg-white p-7 shadow-lg dark:border-slate-700 dark:bg-slate-900">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#c65f2e]">
               Space
             </p>
 
-            <h3 className="mt-2 text-2xl font-black text-[#3f463b] dark:text-white">
+            <h3 className="mt-2 text-2xl font-black text-slate-900 dark:text-white">
               {title}
             </h3>
           </div>
@@ -1737,7 +1737,7 @@ function SpaceFormModal({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-xl border border-[#ded6c7] bg-white px-3 py-2 font-black text-[#5f6658]"
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 font-black text-slate-700"
           >
             ✕
           </button>
@@ -1753,7 +1753,7 @@ function SpaceFormModal({
             type="button"
             onClick={onCancel}
             disabled={isSaving}
-            className="rounded-2xl border border-[#ded6c7] bg-white px-5 py-3 font-bold text-[#5f6658]"
+            className="rounded-md border border-slate-200 bg-white px-5 py-3 font-bold text-slate-700"
           >
             Cancel
           </button>
@@ -1762,7 +1762,7 @@ function SpaceFormModal({
             type="button"
             onClick={onSave}
             disabled={isSaving}
-            className="rounded-2xl bg-[#c65f2e] px-6 py-3 font-bold text-white disabled:bg-slate-400"
+            className="rounded-md bg-[#c65f2e] px-6 py-3 font-bold text-white disabled:bg-slate-400"
           >
             {isSaving ? "Saving..." : saveLabel}
           </button>
@@ -1793,14 +1793,14 @@ function EditSpaceModal({
 }: EditSpaceModalProps) {
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-      <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-[2rem] border border-[#ded6c7] bg-[#fffdf6] p-7 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+      <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-lg border border-slate-200 bg-white p-7 shadow-lg dark:border-slate-700 dark:bg-slate-900">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#c65f2e]">
               Edit
             </p>
 
-            <h3 className="mt-2 text-2xl font-black text-[#3f463b] dark:text-white">
+            <h3 className="mt-2 text-2xl font-black text-slate-900 dark:text-white">
               Space Details
             </h3>
           </div>
@@ -1808,7 +1808,7 @@ function EditSpaceModal({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-xl border border-[#ded6c7] bg-white px-3 py-2 font-black text-[#5f6658]"
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 font-black text-slate-700"
           >
             ✕
           </button>
@@ -1819,7 +1819,7 @@ function EditSpaceModal({
           setForm={setForm}
         />
 
-        <div className="mt-7 border-t border-[#ded6c7] pt-6 dark:border-slate-700">
+        <div className="mt-7 border-t border-slate-200 pt-6 dark:border-slate-700">
           <p className="mb-4 text-xs font-bold uppercase tracking-[0.25em] text-[#c65f2e]">
             Position and Size
           </p>
@@ -1864,7 +1864,7 @@ function EditSpaceModal({
             type="button"
             onClick={onCancel}
             disabled={isSaving}
-            className="rounded-2xl border border-[#ded6c7] bg-white px-5 py-3 font-bold text-[#5f6658]"
+            className="rounded-md border border-slate-200 bg-white px-5 py-3 font-bold text-slate-700"
           >
             Cancel
           </button>
@@ -1873,7 +1873,7 @@ function EditSpaceModal({
             type="button"
             onClick={onSave}
             disabled={isSaving}
-            className="rounded-2xl bg-[#c65f2e] px-6 py-3 font-bold text-white disabled:bg-slate-400"
+            className="rounded-md bg-[#c65f2e] px-6 py-3 font-bold text-white disabled:bg-slate-400"
           >
             {isSaving
               ? "Saving..."
@@ -2044,7 +2044,7 @@ function SpaceFields({
       </div>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-2">
-        <label className="flex items-center gap-3 rounded-2xl border border-[#ded6c7] bg-white p-4 text-sm font-bold text-[#5f6658] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
+        <label className="flex items-center gap-3 rounded-md border border-slate-200 bg-white p-4 text-sm font-bold text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
           <input
             type="checkbox"
             checked={form.requiresApproval}
@@ -2060,7 +2060,7 @@ function SpaceFields({
           Requires HR approval
         </label>
 
-        <label className="flex items-center gap-3 rounded-2xl border border-[#ded6c7] bg-white p-4 text-sm font-bold text-[#5f6658] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
+        <label className="flex items-center gap-3 rounded-md border border-slate-200 bg-white p-4 text-sm font-bold text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
           <input
             type="checkbox"
             checked={form.requiresManager}

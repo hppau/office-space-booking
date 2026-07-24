@@ -7,7 +7,7 @@ import type { ApprovalHistoryRecord } from "@/models/approval-history";
 type DecisionFilter = "ALL" | "APPROVED" | "REJECTED";
 
 const inputClassName =
-  "w-full rounded-2xl border border-[#ded6c7] bg-[#fffdf6] px-4 py-3 text-sm font-medium text-[#3f463b] outline-none transition placeholder:text-[#aaa08c] focus:border-[#c65f2e] focus:ring-2 focus:ring-[#c65f2e]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-orange-300 dark:focus:ring-orange-300/20";
+  "w-full rounded-md border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 outline-none transition placeholder:text-[#aaa08c] focus:border-[#c65f2e] focus:ring-2 focus:ring-[#c65f2e]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-orange-300 dark:focus:ring-orange-300/20";
 
 function formatDate(dateValue: string): string {
   return new Intl.DateTimeFormat("en-SG", {
@@ -112,8 +112,8 @@ export default function ApprovalHistoryPage() {
 
   return (
     <div className="mx-auto max-w-7xl">
-      <section className="overflow-hidden rounded-[2.5rem] border border-[#d8d0bf] bg-[#e7e3d2] shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="relative bg-gradient-to-br from-[#c9d2bd] via-[#e8e3d3] to-[#f6efe2] px-8 py-10 dark:from-slate-950 dark:via-slate-900 dark:to-[#06070b] sm:px-12">
+      <section className="overflow-hidden rounded-none border border-slate-200 bg-white shadow-none dark:border-slate-800 dark:bg-slate-900">
+        <div className="relative bg-gradient-to-br from-[#c9d2bd] via-[#e8e3d3] to-[#f6efe2] px-1 py-6 dark:from-slate-950 dark:via-slate-900 dark:to-[#06070b] sm:px-1">
           <div className="absolute right-[-40px] top-[-40px] h-64 w-64 rounded-full bg-pink-300/20 blur-3xl dark:bg-pink-500/10" />
           <div className="absolute bottom-[-60px] left-[-30px] h-72 w-72 rounded-full bg-[#87977b]/30 blur-3xl dark:bg-orange-500/10" />
 
@@ -122,7 +122,7 @@ export default function ApprovalHistoryPage() {
               Approval Management
             </p>
 
-            <h2 className="mt-5 text-5xl font-black tracking-tight text-white drop-shadow-sm dark:text-white sm:text-6xl">
+            <h2 className="mt-5 text-5xl font-black tracking-tight text-white drop-shadow-none dark:text-white sm:text-6xl">
               Approval History
             </h2>
 
@@ -135,17 +135,17 @@ export default function ApprovalHistoryPage() {
       </section>
 
       <section className="mt-8 grid gap-5 sm:grid-cols-3">
-        <div className="rounded-[2rem] border border-[#d8d0bf] bg-[#f8f3e7] p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <p className="text-sm font-bold text-[#74786d] dark:text-slate-400">
+        <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-none dark:border-slate-800 dark:bg-slate-900">
+          <p className="text-sm font-bold text-slate-500 dark:text-slate-400">
             Total Records
           </p>
 
-          <p className="mt-3 text-4xl font-black text-[#3f463b] dark:text-white">
+          <p className="mt-3 text-4xl font-black text-slate-900 dark:text-white">
             {records.length}
           </p>
         </div>
 
-        <div className="rounded-[2rem] border border-green-200 bg-green-50 p-6 dark:border-green-900/60 dark:bg-green-950/30">
+        <div className="rounded-lg border border-green-200 bg-green-50 p-6 dark:border-green-900/60 dark:bg-green-950/30">
           <p className="text-sm font-bold text-green-700 dark:text-green-200">
             Approved
           </p>
@@ -155,7 +155,7 @@ export default function ApprovalHistoryPage() {
           </p>
         </div>
 
-        <div className="rounded-[2rem] border border-red-200 bg-red-50 p-6 dark:border-red-900/60 dark:bg-red-950/30">
+        <div className="rounded-lg border border-red-200 bg-red-50 p-6 dark:border-red-900/60 dark:bg-red-950/30">
           <p className="text-sm font-bold text-red-700 dark:text-red-200">
             Rejected
           </p>
@@ -166,12 +166,12 @@ export default function ApprovalHistoryPage() {
         </div>
       </section>
 
-      <section className="mt-8 rounded-[2rem] border border-[#d8d0bf] bg-[#f8f3e7] p-7 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <section className="mt-8 rounded-lg border border-slate-200 bg-white p-7 shadow-none dark:border-slate-800 dark:bg-slate-900">
         <div className="grid gap-4 md:grid-cols-[1fr_240px]">
           <div>
             <label
               htmlFor="approval-history-search"
-              className="mb-2 block text-sm font-bold text-[#5f6658] dark:text-slate-300"
+              className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300"
             >
               Search
             </label>
@@ -189,7 +189,7 @@ export default function ApprovalHistoryPage() {
           <div>
             <label
               htmlFor="decision-filter"
-              className="mb-2 block text-sm font-bold text-[#5f6658] dark:text-slate-300"
+              className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300"
             >
               Decision
             </label>
@@ -211,17 +211,17 @@ export default function ApprovalHistoryPage() {
       </section>
 
       {isLoading && (
-        <section className="mt-8 rounded-[2rem] border border-[#d8d0bf] bg-[#f8f3e7] p-12 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <section className="mt-8 rounded-lg border border-slate-200 bg-white p-12 text-center shadow-none dark:border-slate-800 dark:bg-slate-900">
           <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-[#ded5c2] border-t-[#c65f2e] dark:border-slate-700 dark:border-t-orange-300" />
 
-          <p className="mt-5 font-bold text-[#5f6658] dark:text-slate-300">
+          <p className="mt-5 font-bold text-slate-700 dark:text-slate-300">
             Loading approval history...
           </p>
         </section>
       )}
 
       {!isLoading && loadError && (
-        <section className="mt-8 rounded-[2rem] border border-red-200 bg-red-50 p-8 text-center dark:border-red-900/60 dark:bg-red-950/40">
+        <section className="mt-8 rounded-lg border border-red-200 bg-red-50 p-8 text-center dark:border-red-900/60 dark:bg-red-950/40">
           <h3 className="text-lg font-bold text-red-900 dark:text-red-200">
             Unable to load approval history
           </h3>
@@ -233,14 +233,14 @@ export default function ApprovalHistoryPage() {
       )}
 
       {!isLoading && !loadError && filteredRecords.length === 0 && (
-        <section className="mt-8 rounded-[2rem] border border-[#d8d0bf] bg-[#f8f3e7] p-12 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <section className="mt-8 rounded-lg border border-slate-200 bg-white p-12 text-center shadow-none dark:border-slate-800 dark:bg-slate-900">
           <div className="text-5xl">📋</div>
 
-          <h3 className="mt-5 text-xl font-black text-[#3f463b] dark:text-white">
+          <h3 className="mt-5 text-xl font-black text-slate-900 dark:text-white">
             No approval history found
           </h3>
 
-          <p className="mt-2 text-[#74786d] dark:text-slate-400">
+          <p className="mt-2 text-slate-500 dark:text-slate-400">
             There are no approved or rejected records matching your filters.
           </p>
         </section>
@@ -251,12 +251,12 @@ export default function ApprovalHistoryPage() {
           {filteredRecords.map((record) => (
             <article
               key={record.id}
-              className="rounded-[2rem] border border-[#d8d0bf] bg-[#f8f3e7] p-7 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+              className="rounded-lg border border-slate-200 bg-white p-7 shadow-none dark:border-slate-800 dark:bg-slate-900"
             >
               <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-start">
                 <div>
                   <div className="flex flex-wrap items-center gap-3">
-                    <h3 className="text-xl font-black text-[#3f463b] dark:text-white">
+                    <h3 className="text-xl font-black text-slate-900 dark:text-white">
                       {record.booking.resource.name}
                     </h3>
 
@@ -268,46 +268,46 @@ export default function ApprovalHistoryPage() {
                       {record.decision}
                     </span>
 
-                    <span className="rounded-full bg-[#eef0e2] px-3 py-1 text-xs font-bold text-[#74786d] dark:bg-slate-800 dark:text-slate-300">
+                    <span className="rounded-full bg-[#eef0e2] px-3 py-1 text-xs font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-300">
                       {record.stage}
                     </span>
                   </div>
 
-                  <p className="mt-1 text-sm text-[#74786d] dark:text-slate-400">
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                     {record.booking.resource.floor.office.name} ·{" "}
                     {record.booking.resource.floor.name} ·{" "}
                     {record.booking.resource.code}
                   </p>
 
-                  <p className="mt-3 text-sm text-[#5f6658] dark:text-slate-300">
+                  <p className="mt-3 text-sm text-slate-700 dark:text-slate-300">
                     <span className="font-bold">Requested by:</span>{" "}
                     {record.booking.user.fullName}
                   </p>
 
-                  <p className="mt-1 text-sm text-[#74786d] dark:text-slate-400">
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                     {record.booking.user.employeeCode ?? "No employee code"} ·{" "}
                     {record.booking.user.email}
                   </p>
                 </div>
 
                 <div className="lg:text-right">
-                  <p className="text-sm text-[#74786d] dark:text-slate-400">
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
                     Booking reference
                   </p>
 
-                  <p className="mt-1 font-black text-[#3f463b] dark:text-white">
+                  <p className="mt-1 font-black text-slate-900 dark:text-white">
                     {record.booking.bookingNumber}
                   </p>
                 </div>
               </div>
 
-              <dl className="mt-6 grid gap-4 rounded-[2rem] border border-[#ded6c7] bg-[#fffdf6] p-5 sm:grid-cols-2 lg:grid-cols-4 dark:border-slate-800 dark:bg-slate-950">
+              <dl className="mt-6 grid gap-4 rounded-lg border border-slate-200 bg-white p-5 sm:grid-cols-2 lg:grid-cols-4 dark:border-slate-800 dark:bg-slate-950">
                 <div>
                   <dt className="text-xs font-bold uppercase tracking-wide text-[#87977b] dark:text-slate-500">
                     Booking Date
                   </dt>
 
-                  <dd className="mt-2 font-bold text-[#3f463b] dark:text-white">
+                  <dd className="mt-2 font-bold text-slate-900 dark:text-white">
                     {formatDate(record.booking.startAt)}
                   </dd>
                 </div>
@@ -317,7 +317,7 @@ export default function ApprovalHistoryPage() {
                     Booking Time
                   </dt>
 
-                  <dd className="mt-2 font-bold text-[#3f463b] dark:text-white">
+                  <dd className="mt-2 font-bold text-slate-900 dark:text-white">
                     {formatTime(record.booking.startAt)} –{" "}
                     {formatTime(record.booking.endAt)}
                   </dd>
@@ -328,7 +328,7 @@ export default function ApprovalHistoryPage() {
                     Decided By
                   </dt>
 
-                  <dd className="mt-2 font-bold text-[#3f463b] dark:text-white">
+                  <dd className="mt-2 font-bold text-slate-900 dark:text-white">
                     {record.approver.fullName}
                   </dd>
                 </div>
@@ -338,14 +338,14 @@ export default function ApprovalHistoryPage() {
                     Decided On
                   </dt>
 
-                  <dd className="mt-2 font-bold text-[#3f463b] dark:text-white">
+                  <dd className="mt-2 font-bold text-slate-900 dark:text-white">
                     {formatDate(record.decidedAt)}
                   </dd>
                 </div>
               </dl>
 
               <div className="mt-5">
-                <p className="text-sm font-bold text-[#5f6658] dark:text-slate-300">
+                <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
                   Booking reason
                 </p>
 
@@ -355,8 +355,8 @@ export default function ApprovalHistoryPage() {
               </div>
 
               {record.comment && (
-                <div className="mt-5 rounded-2xl border border-[#ded6c7] bg-[#fffdf6] p-4 dark:border-slate-800 dark:bg-slate-950">
-                  <p className="text-sm font-bold text-[#5f6658] dark:text-slate-300">
+                <div className="mt-5 rounded-md border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+                  <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
                     Approval comment
                   </p>
 
@@ -367,7 +367,7 @@ export default function ApprovalHistoryPage() {
               )}
 
               {record.booking.rejectionReason && (
-                <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 dark:border-red-900/60 dark:bg-red-950/40">
+                <div className="mt-5 rounded-md border border-red-200 bg-red-50 p-4 dark:border-red-900/60 dark:bg-red-950/40">
                   <p className="text-sm font-bold text-red-800 dark:text-red-200">
                     Rejection reason
                   </p>

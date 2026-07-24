@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   createFloorForManagement,
@@ -34,13 +35,13 @@ const emptyFloorForm: FloorFormData = {
 };
 
 const inputClassName =
-  "w-full rounded-2xl border border-[#ded6c7] bg-[#fffdf6] px-4 py-3 text-sm font-medium text-[#3f463b] outline-none transition placeholder:text-[#aaa08c] focus:border-[#c65f2e] focus:ring-2 focus:ring-[#c65f2e]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-orange-300 dark:focus:ring-orange-300/20";
+  "w-full rounded-md border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 outline-none transition placeholder:text-[#aaa08c] focus:border-[#c65f2e] focus:ring-2 focus:ring-[#c65f2e]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-orange-300 dark:focus:ring-orange-300/20";
 
 const selectClassName =
-  "w-full rounded-2xl border border-[#ded6c7] bg-[#fffdf6] px-4 py-3 text-sm font-medium text-[#3f463b] outline-none transition focus:border-[#c65f2e] focus:ring-2 focus:ring-[#c65f2e]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-orange-300 dark:focus:ring-orange-300/20";
+  "w-full rounded-md border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 outline-none transition focus:border-[#c65f2e] focus:ring-2 focus:ring-[#c65f2e]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-orange-300 dark:focus:ring-orange-300/20";
 
 const textareaClassName =
-  "w-full resize-none rounded-2xl border border-[#ded6c7] bg-[#fffdf6] px-4 py-3 text-sm font-medium text-[#3f463b] outline-none transition placeholder:text-[#aaa08c] focus:border-[#c65f2e] focus:ring-2 focus:ring-[#c65f2e]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-orange-300 dark:focus:ring-orange-300/20";
+  "w-full resize-none rounded-md border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 outline-none transition placeholder:text-[#aaa08c] focus:border-[#c65f2e] focus:ring-2 focus:ring-[#c65f2e]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-orange-300 dark:focus:ring-orange-300/20";
 
 function getActiveStyles(isActive: boolean): string {
   return isActive
@@ -108,12 +109,12 @@ export default function LocationManagementPage() {
         setOffices(officeRecords);
         setFloors(floorRecords);
       } catch (error) {
-        console.error("Failed to load location management data:", error);
+        console.error("Failed to load room management data:", error);
 
         setLoadError(
           error instanceof Error
             ? error.message
-            : "Unable to load location management data.",
+            : "Unable to load room management data.",
         );
       } finally {
         setIsLoading(false);
@@ -285,11 +286,11 @@ export default function LocationManagementPage() {
 
   function validateFloorForm(): string {
     if (!floorForm.name.trim()) {
-      return "Floor name is required.";
+      return "Room name is required.";
     }
 
     if (floorForm.name.trim().length > 100) {
-      return "Floor name cannot exceed 100 characters.";
+      return "Room name cannot exceed 100 characters.";
     }
 
     if (!floorForm.officeId) {
@@ -301,7 +302,7 @@ export default function LocationManagementPage() {
       (!Number.isInteger(Number(floorForm.floorNumber)) ||
         Number(floorForm.floorNumber) < 0)
     ) {
-      return "Floor number must be 0 or above.";
+      return "Room number must be 0 or above.";
     }
 
     return "";
@@ -414,13 +415,13 @@ export default function LocationManagementPage() {
           ),
         );
 
-        setActionMessage("Floor updated successfully.");
+        setActionMessage("Room updated successfully.");
       } else {
         const createdFloor = await createFloorForManagement(request);
 
         setFloors((currentFloors) => [...currentFloors, createdFloor]);
 
-        setActionMessage("Floor created successfully.");
+        setActionMessage("Room created successfully.");
       }
 
       setIsFloorFormOpen(false);
@@ -430,7 +431,7 @@ export default function LocationManagementPage() {
       setFloorFormError(
         error instanceof Error
           ? error.message
-          : "Unable to save floor.",
+          : "Unable to save room.",
       );
     } finally {
       setIsSavingFloor(false);
@@ -439,7 +440,7 @@ export default function LocationManagementPage() {
 
   async function handleDeactivateOffice(office: ManagedOffice) {
     const confirmed = window.confirm(
-      `Deactivate office "${office.name}"? This will not delete existing floors or spaces.`,
+      `Deactivate office "${office.name}"? This will not delete existing rooms or bookable areas.`,
     );
 
     if (!confirmed) {
@@ -471,7 +472,7 @@ export default function LocationManagementPage() {
 
   async function handleDeactivateFloor(floor: ManagedFloor) {
     const confirmed = window.confirm(
-      `Deactivate floor "${floor.name}"? This will not delete existing spaces.`,
+      `Deactivate room "${floor.name}"? This will not delete existing bookable areas.`,
     );
 
     if (!confirmed) {
@@ -493,12 +494,12 @@ export default function LocationManagementPage() {
         ),
       );
 
-      setActionMessage("Floor deactivated successfully.");
+      setActionMessage("Room deactivated successfully.");
     } catch (error) {
       window.alert(
         error instanceof Error
           ? error.message
-          : "Unable to deactivate floor.",
+          : "Unable to deactivate room.",
       );
     }
   }
@@ -529,14 +530,14 @@ export default function LocationManagementPage() {
         ),
       );
 
-      setActionMessage("Floor plan uploaded successfully.");
+      setActionMessage("Room image uploaded successfully.");
       setUploadFloor(null);
       setSelectedFloorPlanFile(null);
     } catch (error) {
       setUploadError(
         error instanceof Error
           ? error.message
-          : "Unable to upload floor plan.",
+          : "Unable to upload room image.",
       );
     } finally {
       setIsUploading(false);
@@ -549,8 +550,8 @@ export default function LocationManagementPage() {
 
   return (
     <div className="mx-auto max-w-7xl">
-      <section className="overflow-hidden rounded-[2.5rem] border border-[#d8d0bf] bg-[#e7e3d2] shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="relative bg-gradient-to-br from-[#c9d2bd] via-[#e8e3d3] to-[#f6efe2] px-8 py-10 dark:from-slate-950 dark:via-slate-900 dark:to-[#06070b] sm:px-12">
+      <section className="overflow-hidden rounded-none border border-slate-200 bg-white shadow-none dark:border-slate-800 dark:bg-slate-900">
+        <div className="relative bg-gradient-to-br from-[#c9d2bd] via-[#e8e3d3] to-[#f6efe2] px-1 py-6 dark:from-slate-950 dark:via-slate-900 dark:to-[#06070b] sm:px-1">
           <div className="absolute right-[-40px] top-[-40px] h-64 w-64 rounded-full bg-pink-300/20 blur-3xl dark:bg-pink-500/10" />
           <div className="absolute bottom-[-60px] left-[-30px] h-72 w-72 rounded-full bg-[#87977b]/30 blur-3xl dark:bg-orange-500/10" />
 
@@ -560,13 +561,13 @@ export default function LocationManagementPage() {
                 HR Management
               </p>
 
-              <h2 className="mt-5 text-5xl font-black tracking-tight text-white drop-shadow-sm dark:text-white sm:text-6xl">
-                Office / Floor Management
+              <h2 className="mt-5 text-5xl font-black tracking-tight text-white drop-shadow-none dark:text-white sm:text-6xl">
+                Room Management
               </h2>
 
               <p className="mt-5 max-w-2xl text-base leading-7 text-[#5e6558] dark:text-slate-300">
-                Manage office locations, floor records, and uploaded floor
-                plan images before creating bookable spaces.
+                Create rooms, upload one room image for each room, and manage
+                the bookable areas shown on each room layout.
               </p>
             </div>
 
@@ -574,7 +575,7 @@ export default function LocationManagementPage() {
               <button
                 type="button"
                 onClick={openCreateOfficeForm}
-                className="rounded-2xl bg-[#c65f2e] px-5 py-3 font-bold text-white shadow-sm transition hover:bg-[#a94f26] dark:bg-orange-500 dark:hover:bg-orange-600"
+                className="rounded-md bg-[#c65f2e] px-5 py-3 font-bold text-white shadow-none transition hover:bg-[#a94f26] dark:bg-orange-500 dark:hover:bg-orange-600"
               >
                 <i className="fa-solid fa-plus mr-2" />
                 Add Office
@@ -584,10 +585,10 @@ export default function LocationManagementPage() {
                 type="button"
                 onClick={openCreateFloorForm}
                 disabled={activeOffices.length === 0}
-                className="rounded-2xl border border-white/70 bg-white/70 px-5 py-3 font-bold text-[#5f6658] shadow-sm backdrop-blur transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-300 dark:hover:bg-slate-900"
+                className="rounded-md border border-white/70 bg-white/70 px-5 py-3 font-bold text-slate-700 shadow-none backdrop-blur transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-300 dark:hover:bg-slate-900"
               >
-                <i className="fa-solid fa-layer-group mr-2 text-[#c65f2e] dark:text-orange-300" />
-                Add Floor
+                <i className="fa-solid fa-door-open mr-2 text-[#c65f2e] dark:text-orange-300" />
+                Add Room
               </button>
             </div>
           </div>
@@ -595,41 +596,41 @@ export default function LocationManagementPage() {
       </section>
 
       {actionMessage && (
-        <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-700 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-300">
+        <div className="mt-6 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-700 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-300">
           {actionMessage}
         </div>
       )}
 
       {activeOffices.length === 0 && !isLoading && !loadError && (
-        <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300">
-          Please create at least one active office before creating a floor.
+        <div className="mt-6 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300">
+          Please create at least one active office before creating a room.
         </div>
       )}
 
       <section className="mt-8 grid gap-5 sm:grid-cols-3">
-        <div className="rounded-[2rem] border border-[#d8d0bf] bg-[#f8f3e7] p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <p className="text-sm font-bold text-[#74786d] dark:text-slate-400">
+        <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-none dark:border-slate-800 dark:bg-slate-900">
+          <p className="text-sm font-bold text-slate-500 dark:text-slate-400">
             Active Offices
           </p>
 
-          <p className="mt-3 text-4xl font-black text-[#3f463b] dark:text-white">
+          <p className="mt-3 text-4xl font-black text-slate-900 dark:text-white">
             {activeOfficeCount}
           </p>
         </div>
 
-        <div className="rounded-[2rem] border border-[#d8d0bf] bg-[#f8f3e7] p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <p className="text-sm font-bold text-[#74786d] dark:text-slate-400">
-            Active Floors
+        <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-none dark:border-slate-800 dark:bg-slate-900">
+          <p className="text-sm font-bold text-slate-500 dark:text-slate-400">
+            Active Rooms
           </p>
 
-          <p className="mt-3 text-4xl font-black text-[#3f463b] dark:text-white">
+          <p className="mt-3 text-4xl font-black text-slate-900 dark:text-white">
             {activeFloorCount}
           </p>
         </div>
 
-        <div className="rounded-[2rem] border border-pink-200 bg-pink-50 p-6 dark:border-pink-900/60 dark:bg-pink-950/30">
+        <div className="rounded-lg border border-pink-200 bg-pink-50 p-6 dark:border-pink-900/60 dark:bg-pink-950/30">
           <p className="text-sm font-bold text-pink-700 dark:text-pink-200">
-            Floor Plans
+            Room Images
           </p>
 
           <p className="mt-3 text-4xl font-black text-pink-900 dark:text-pink-100">
@@ -638,15 +639,15 @@ export default function LocationManagementPage() {
         </div>
       </section>
 
-      <section className="mt-8 rounded-[2rem] border border-[#d8d0bf] bg-[#f8f3e7] p-2 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <section className="mt-8 rounded-lg border border-slate-200 bg-white p-2 shadow-none dark:border-slate-800 dark:bg-slate-900">
         <div className="grid gap-2 sm:grid-cols-2">
           <button
             type="button"
             onClick={() => setActiveTab("OFFICES")}
-            className={`rounded-2xl px-5 py-3 text-sm font-bold transition ${
+            className={`rounded-md px-5 py-3 text-sm font-bold transition ${
               activeTab === "OFFICES"
-                ? "bg-[#c65f2e] text-white shadow-sm dark:bg-orange-500"
-                : "text-[#5f6658] hover:bg-[#fffdf6] dark:text-slate-300 dark:hover:bg-slate-800"
+                ? "bg-[#c65f2e] text-white shadow-none dark:bg-orange-500"
+                : "text-slate-700 hover:bg-white dark:text-slate-300 dark:hover:bg-slate-800"
             }`}
           >
             Offices
@@ -655,29 +656,29 @@ export default function LocationManagementPage() {
           <button
             type="button"
             onClick={() => setActiveTab("FLOORS")}
-            className={`rounded-2xl px-5 py-3 text-sm font-bold transition ${
+            className={`rounded-md px-5 py-3 text-sm font-bold transition ${
               activeTab === "FLOORS"
-                ? "bg-[#c65f2e] text-white shadow-sm dark:bg-orange-500"
-                : "text-[#5f6658] hover:bg-[#fffdf6] dark:text-slate-300 dark:hover:bg-slate-800"
+                ? "bg-[#c65f2e] text-white shadow-none dark:bg-orange-500"
+                : "text-slate-700 hover:bg-white dark:text-slate-300 dark:hover:bg-slate-800"
             }`}
           >
-            Floors
+            Rooms
           </button>
         </div>
       </section>
 
       {isLoading && (
-        <section className="mt-8 rounded-[2rem] border border-[#d8d0bf] bg-[#f8f3e7] p-12 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <section className="mt-8 rounded-lg border border-slate-200 bg-white p-12 text-center shadow-none dark:border-slate-800 dark:bg-slate-900">
           <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-[#ded5c2] border-t-[#c65f2e] dark:border-slate-700 dark:border-t-orange-300" />
 
-          <p className="mt-5 font-bold text-[#5f6658] dark:text-slate-300">
-            Loading office and floor data...
+          <p className="mt-5 font-bold text-slate-700 dark:text-slate-300">
+            Loading office and room data...
           </p>
         </section>
       )}
 
       {!isLoading && loadError && (
-        <section className="mt-8 rounded-[2rem] border border-red-200 bg-red-50 p-8 text-center dark:border-red-900/60 dark:bg-red-950/40">
+        <section className="mt-8 rounded-lg border border-red-200 bg-red-50 p-8 text-center dark:border-red-900/60 dark:bg-red-950/40">
           <div className="text-4xl">⚠️</div>
 
           <h3 className="mt-4 text-lg font-bold text-red-900 dark:text-red-200">
@@ -691,7 +692,7 @@ export default function LocationManagementPage() {
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="mt-6 rounded-2xl bg-red-600 px-5 py-3 font-bold text-white hover:bg-red-700"
+            className="mt-6 rounded-md bg-red-600 px-5 py-3 font-bold text-white hover:bg-red-700"
           >
             Try Again
           </button>
@@ -700,10 +701,10 @@ export default function LocationManagementPage() {
 
       {!isLoading && !loadError && activeTab === "OFFICES" && (
         <>
-          <section className="mt-8 rounded-[2rem] border border-[#d8d0bf] bg-[#f8f3e7] p-7 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <section className="mt-8 rounded-lg border border-slate-200 bg-white p-7 shadow-none dark:border-slate-800 dark:bg-slate-900">
             <label
               htmlFor="office-search"
-              className="mb-2 block text-sm font-bold text-[#5f6658] dark:text-slate-300"
+              className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300"
             >
               Search offices
             </label>
@@ -719,22 +720,22 @@ export default function LocationManagementPage() {
           </section>
 
           {filteredOffices.length === 0 ? (
-            <section className="mt-8 rounded-[2rem] border border-[#d8d0bf] bg-[#f8f3e7] p-12 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <section className="mt-8 rounded-lg border border-slate-200 bg-white p-12 text-center shadow-none dark:border-slate-800 dark:bg-slate-900">
               <div className="text-5xl">🏢</div>
 
-              <h3 className="mt-5 text-xl font-black text-[#3f463b] dark:text-white">
+              <h3 className="mt-5 text-xl font-black text-slate-900 dark:text-white">
                 No offices found
               </h3>
 
-              <p className="mt-2 text-[#74786d] dark:text-slate-400">
-                Create an office first before adding floors.
+              <p className="mt-2 text-slate-500 dark:text-slate-400">
+                Create an office first before adding rooms.
               </p>
             </section>
           ) : (
-            <section className="mt-8 overflow-hidden rounded-[2rem] border border-[#d8d0bf] bg-[#f8f3e7] shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <section className="mt-8 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-none dark:border-slate-800 dark:bg-slate-900">
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-[#ded6c7] dark:divide-slate-800">
-                  <thead className="bg-[#fffdf6] dark:bg-slate-950">
+                <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
+                  <thead className="bg-white dark:bg-slate-950">
                     <tr>
                       <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wide text-[#87977b] dark:text-slate-500">
                         Office
@@ -758,23 +759,23 @@ export default function LocationManagementPage() {
                     </tr>
                   </thead>
 
-                  <tbody className="divide-y divide-[#ded6c7] bg-[#f8f3e7] dark:divide-slate-800 dark:bg-slate-900">
+                  <tbody className="divide-y divide-slate-200 bg-white dark:divide-slate-800 dark:bg-slate-900">
                     {filteredOffices.map((office) => (
                       <tr
                         key={office.id}
-                        className="transition hover:bg-[#fffdf6] dark:hover:bg-slate-950"
+                        className="transition hover:bg-white dark:hover:bg-slate-950"
                       >
                         <td className="px-6 py-4">
-                          <p className="font-black text-[#3f463b] dark:text-white">
+                          <p className="font-black text-slate-900 dark:text-white">
                             {office.name}
                           </p>
                         </td>
 
-                        <td className="px-6 py-4 text-sm text-[#5f6658] dark:text-slate-300">
+                        <td className="px-6 py-4 text-sm text-slate-700 dark:text-slate-300">
                           {office.address || "No address"}
                         </td>
 
-                        <td className="px-6 py-4 text-sm text-[#5f6658] dark:text-slate-300">
+                        <td className="px-6 py-4 text-sm text-slate-700 dark:text-slate-300">
                           {office.timezone}
                         </td>
 
@@ -793,7 +794,7 @@ export default function LocationManagementPage() {
                             <button
                               type="button"
                               onClick={() => openEditOfficeForm(office)}
-                              className="rounded-xl border border-[#ded6c7] bg-[#fffdf6] px-3 py-2 text-sm font-bold text-[#5f6658] transition hover:bg-[#f3efe3] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-800"
+                              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-800"
                             >
                               Edit
                             </button>
@@ -823,12 +824,12 @@ export default function LocationManagementPage() {
 
       {!isLoading && !loadError && activeTab === "FLOORS" && (
         <>
-          <section className="mt-8 rounded-[2rem] border border-[#d8d0bf] bg-[#f8f3e7] p-7 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <section className="mt-8 rounded-lg border border-slate-200 bg-white p-7 shadow-none dark:border-slate-800 dark:bg-slate-900">
             <label
               htmlFor="floor-search"
-              className="mb-2 block text-sm font-bold text-[#5f6658] dark:text-slate-300"
+              className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300"
             >
-              Search floors
+              Search rooms
             </label>
 
             <input
@@ -836,31 +837,31 @@ export default function LocationManagementPage() {
               type="search"
               value={floorSearch}
               onChange={(event) => setFloorSearch(event.target.value)}
-              placeholder="Search by floor name, number or office"
+              placeholder="Search by room name, room number or office"
               className={inputClassName}
             />
           </section>
 
           {filteredFloors.length === 0 ? (
-            <section className="mt-8 rounded-[2rem] border border-[#d8d0bf] bg-[#f8f3e7] p-12 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <section className="mt-8 rounded-lg border border-slate-200 bg-white p-12 text-center shadow-none dark:border-slate-800 dark:bg-slate-900">
               <div className="text-5xl">🏬</div>
 
-              <h3 className="mt-5 text-xl font-black text-[#3f463b] dark:text-white">
-                No floors found
+              <h3 className="mt-5 text-xl font-black text-slate-900 dark:text-white">
+                No rooms found
               </h3>
 
-              <p className="mt-2 text-[#74786d] dark:text-slate-400">
-                Create a floor under an active office.
+              <p className="mt-2 text-slate-500 dark:text-slate-400">
+                Create a room under an active office.
               </p>
             </section>
           ) : (
-            <section className="mt-8 overflow-hidden rounded-[2rem] border border-[#d8d0bf] bg-[#f8f3e7] shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <section className="mt-8 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-none dark:border-slate-800 dark:bg-slate-900">
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-[#ded6c7] dark:divide-slate-800">
-                  <thead className="bg-[#fffdf6] dark:bg-slate-950">
+                <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
+                  <thead className="bg-white dark:bg-slate-950">
                     <tr>
                       <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wide text-[#87977b] dark:text-slate-500">
-                        Floor
+                        Room
                       </th>
 
                       <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wide text-[#87977b] dark:text-slate-500">
@@ -868,11 +869,11 @@ export default function LocationManagementPage() {
                       </th>
 
                       <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wide text-[#87977b] dark:text-slate-500">
-                        Floor Number
+                        Room Number
                       </th>
 
                       <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wide text-[#87977b] dark:text-slate-500">
-                        Floor Plan
+                        Room Image
                       </th>
 
                       <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wide text-[#87977b] dark:text-slate-500">
@@ -885,27 +886,27 @@ export default function LocationManagementPage() {
                     </tr>
                   </thead>
 
-                  <tbody className="divide-y divide-[#ded6c7] bg-[#f8f3e7] dark:divide-slate-800 dark:bg-slate-900">
+                  <tbody className="divide-y divide-slate-200 bg-white dark:divide-slate-800 dark:bg-slate-900">
                     {filteredFloors.map((floor) => (
                       <tr
                         key={floor.id}
-                        className="transition hover:bg-[#fffdf6] dark:hover:bg-slate-950"
+                        className="transition hover:bg-white dark:hover:bg-slate-950"
                       >
                         <td className="px-6 py-4">
-                          <p className="font-black text-[#3f463b] dark:text-white">
+                          <p className="font-black text-slate-900 dark:text-white">
                             {floor.name}
                           </p>
                         </td>
 
-                        <td className="px-6 py-4 text-sm text-[#5f6658] dark:text-slate-300">
+                        <td className="px-6 py-4 text-sm text-slate-700 dark:text-slate-300">
                           {floor.office.name}
                         </td>
 
-                        <td className="px-6 py-4 text-sm text-[#5f6658] dark:text-slate-300">
+                        <td className="px-6 py-4 text-sm text-slate-700 dark:text-slate-300">
                           {floor.floorNumber ?? "Not set"}
                         </td>
 
-                        <td className="px-6 py-4 text-sm text-[#5f6658] dark:text-slate-300">
+                        <td className="px-6 py-4 text-sm text-slate-700 dark:text-slate-300">
                           {floor.floorPlanUrl ? (
                             <a
                               href={floor.floorPlanUrl}
@@ -939,13 +940,21 @@ export default function LocationManagementPage() {
                               onClick={() => openUploadFloorPlanForm(floor)}
                               className="rounded-xl border border-pink-300 bg-white px-3 py-2 text-sm font-bold text-pink-600 transition hover:bg-pink-50 dark:border-pink-500/60 dark:bg-slate-950 dark:text-pink-300 dark:hover:bg-pink-950/30"
                             >
-                              Upload Plan
+                              Upload Image
                             </button>
+
+                            <Link
+                              href={`/room-area-management?roomId=${floor.id}`}
+                              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-3 py-2 text-sm font-bold text-white transition hover:bg-blue-700"
+                            >
+                              <i className="fa-solid fa-map-location-dot" />
+                              Manage Areas
+                            </Link>
 
                             <button
                               type="button"
                               onClick={() => openEditFloorForm(floor)}
-                              className="rounded-xl border border-[#ded6c7] bg-[#fffdf6] px-3 py-2 text-sm font-bold text-[#5f6658] transition hover:bg-[#f3efe3] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-800"
+                              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-800"
                             >
                               Edit
                             </button>
@@ -975,14 +984,14 @@ export default function LocationManagementPage() {
 
       {isOfficeFormOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-8">
-          <section className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[2rem] border border-[#d8d0bf] bg-[#f8f3e7] text-[#3f463b] shadow-2xl dark:border-slate-800 dark:bg-slate-900 dark:text-white">
-            <header className="flex items-start justify-between border-b border-[#ded6c7] px-6 py-5 dark:border-slate-800">
+          <section className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-slate-200 bg-white text-slate-900 shadow-lg dark:border-slate-800 dark:bg-slate-900 dark:text-white">
+            <header className="flex items-start justify-between border-b border-slate-200 px-6 py-5 dark:border-slate-800">
               <div>
                 <p className="text-sm font-bold text-[#c65f2e] dark:text-orange-300">
                   {editingOfficeId ? "Edit office" : "Create office"}
                 </p>
 
-                <h3 className="mt-1 text-xl font-black text-[#3f463b] dark:text-white">
+                <h3 className="mt-1 text-xl font-black text-slate-900 dark:text-white">
                   {editingOfficeId
                     ? "Update office details"
                     : "Add new office"}
@@ -993,7 +1002,7 @@ export default function LocationManagementPage() {
                 type="button"
                 onClick={closeOfficeForm}
                 disabled={isSavingOffice}
-                className="flex h-10 w-10 items-center justify-center rounded-full text-xl text-[#74786d] transition hover:bg-[#fffdf6] disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800"
+                className="flex h-10 w-10 items-center justify-center rounded-full text-xl text-slate-500 transition hover:bg-white disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800"
               >
                 ×
               </button>
@@ -1003,7 +1012,7 @@ export default function LocationManagementPage() {
               <div>
                 <label
                   htmlFor="office-name"
-                  className="mb-2 block text-sm font-bold text-[#5f6658] dark:text-slate-300"
+                  className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300"
                 >
                   Office name <span className="text-red-500">*</span>
                 </label>
@@ -1022,7 +1031,7 @@ export default function LocationManagementPage() {
               <div>
                 <label
                   htmlFor="office-address"
-                  className="mb-2 block text-sm font-bold text-[#5f6658] dark:text-slate-300"
+                  className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300"
                 >
                   Address
                 </label>
@@ -1047,7 +1056,7 @@ export default function LocationManagementPage() {
               <div>
                 <label
                   htmlFor="office-timezone"
-                  className="mb-2 block text-sm font-bold text-[#5f6658] dark:text-slate-300"
+                  className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300"
                 >
                   Timezone
                 </label>
@@ -1063,7 +1072,7 @@ export default function LocationManagementPage() {
                 />
               </div>
 
-              <label className="flex items-center gap-3 rounded-2xl border border-[#ded6c7] bg-[#fffdf6] p-4 text-sm font-bold text-[#5f6658] dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+              <label className="flex items-center gap-3 rounded-md border border-slate-200 bg-white p-4 text-sm font-bold text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
                 <input
                   type="checkbox"
                   checked={officeForm.isActive}
@@ -1076,18 +1085,18 @@ export default function LocationManagementPage() {
               </label>
 
               {officeFormError && (
-                <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
+                <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
                   {officeFormError}
                 </div>
               )}
             </div>
 
-            <footer className="flex flex-col-reverse gap-3 border-t border-[#ded6c7] px-6 py-5 sm:flex-row sm:justify-end dark:border-slate-800">
+            <footer className="flex flex-col-reverse gap-3 border-t border-slate-200 px-6 py-5 sm:flex-row sm:justify-end dark:border-slate-800">
               <button
                 type="button"
                 onClick={closeOfficeForm}
                 disabled={isSavingOffice}
-                className="rounded-2xl border border-[#ded6c7] bg-[#fffdf6] px-5 py-3 font-bold text-[#5f6658] transition hover:bg-[#f3efe3] disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-800"
+                className="rounded-md border border-slate-200 bg-white px-5 py-3 font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-800"
               >
                 Cancel
               </button>
@@ -1096,7 +1105,7 @@ export default function LocationManagementPage() {
                 type="button"
                 onClick={() => void handleSaveOffice()}
                 disabled={isSavingOffice}
-                className="rounded-2xl bg-[#c65f2e] px-6 py-3 font-bold text-white transition hover:bg-[#a94f26] disabled:cursor-not-allowed disabled:bg-orange-300 dark:bg-orange-500 dark:hover:bg-orange-600"
+                className="rounded-md bg-[#c65f2e] px-6 py-3 font-bold text-white transition hover:bg-[#a94f26] disabled:cursor-not-allowed disabled:bg-orange-300 dark:bg-orange-500 dark:hover:bg-orange-600"
               >
                 {isSavingOffice
                   ? "Saving..."
@@ -1111,17 +1120,17 @@ export default function LocationManagementPage() {
 
       {isFloorFormOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-8">
-          <section className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[2rem] border border-[#d8d0bf] bg-[#f8f3e7] text-[#3f463b] shadow-2xl dark:border-slate-800 dark:bg-slate-900 dark:text-white">
-            <header className="flex items-start justify-between border-b border-[#ded6c7] px-6 py-5 dark:border-slate-800">
+          <section className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-slate-200 bg-white text-slate-900 shadow-lg dark:border-slate-800 dark:bg-slate-900 dark:text-white">
+            <header className="flex items-start justify-between border-b border-slate-200 px-6 py-5 dark:border-slate-800">
               <div>
                 <p className="text-sm font-bold text-[#c65f2e] dark:text-orange-300">
-                  {editingFloorId ? "Edit floor" : "Create floor"}
+                  {editingFloorId ? "Edit room" : "Create room"}
                 </p>
 
-                <h3 className="mt-1 text-xl font-black text-[#3f463b] dark:text-white">
+                <h3 className="mt-1 text-xl font-black text-slate-900 dark:text-white">
                   {editingFloorId
-                    ? "Update floor details"
-                    : "Add new floor"}
+                    ? "Update room details"
+                    : "Add new room"}
                 </h3>
               </div>
 
@@ -1129,7 +1138,7 @@ export default function LocationManagementPage() {
                 type="button"
                 onClick={closeFloorForm}
                 disabled={isSavingFloor}
-                className="flex h-10 w-10 items-center justify-center rounded-full text-xl text-[#74786d] transition hover:bg-[#fffdf6] disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800"
+                className="flex h-10 w-10 items-center justify-center rounded-full text-xl text-slate-500 transition hover:bg-white disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800"
               >
                 ×
               </button>
@@ -1139,7 +1148,7 @@ export default function LocationManagementPage() {
               <div>
                 <label
                   htmlFor="floor-office"
-                  className="mb-2 block text-sm font-bold text-[#5f6658] dark:text-slate-300"
+                  className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300"
                 >
                   Office <span className="text-red-500">*</span>
                 </label>
@@ -1168,9 +1177,9 @@ export default function LocationManagementPage() {
               <div>
                 <label
                   htmlFor="floor-name"
-                  className="mb-2 block text-sm font-bold text-[#5f6658] dark:text-slate-300"
+                  className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300"
                 >
-                  Floor name <span className="text-red-500">*</span>
+                  Room name <span className="text-red-500">*</span>
                 </label>
 
                 <input
@@ -1179,7 +1188,7 @@ export default function LocationManagementPage() {
                   onChange={(event) =>
                     updateFloorForm("name", event.target.value)
                   }
-                  placeholder="Example: Level 3"
+                  placeholder="Example: Meeting Room A"
                   className={inputClassName}
                 />
               </div>
@@ -1187,9 +1196,9 @@ export default function LocationManagementPage() {
               <div>
                 <label
                   htmlFor="floor-number"
-                  className="mb-2 block text-sm font-bold text-[#5f6658] dark:text-slate-300"
+                  className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300"
                 >
-                  Floor number
+                  Room number
                 </label>
 
                 <input
@@ -1210,7 +1219,7 @@ export default function LocationManagementPage() {
                 />
               </div>
 
-              <label className="flex items-center gap-3 rounded-2xl border border-[#ded6c7] bg-[#fffdf6] p-4 text-sm font-bold text-[#5f6658] dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+              <label className="flex items-center gap-3 rounded-md border border-slate-200 bg-white p-4 text-sm font-bold text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
                 <input
                   type="checkbox"
                   checked={floorForm.isActive}
@@ -1219,22 +1228,22 @@ export default function LocationManagementPage() {
                   }
                   className="h-4 w-4 accent-[#c65f2e]"
                 />
-                Floor is active
+                Room is active
               </label>
 
               {floorFormError && (
-                <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
+                <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
                   {floorFormError}
                 </div>
               )}
             </div>
 
-            <footer className="flex flex-col-reverse gap-3 border-t border-[#ded6c7] px-6 py-5 sm:flex-row sm:justify-end dark:border-slate-800">
+            <footer className="flex flex-col-reverse gap-3 border-t border-slate-200 px-6 py-5 sm:flex-row sm:justify-end dark:border-slate-800">
               <button
                 type="button"
                 onClick={closeFloorForm}
                 disabled={isSavingFloor}
-                className="rounded-2xl border border-[#ded6c7] bg-[#fffdf6] px-5 py-3 font-bold text-[#5f6658] transition hover:bg-[#f3efe3] disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-800"
+                className="rounded-md border border-slate-200 bg-white px-5 py-3 font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-800"
               >
                 Cancel
               </button>
@@ -1243,13 +1252,13 @@ export default function LocationManagementPage() {
                 type="button"
                 onClick={() => void handleSaveFloor()}
                 disabled={isSavingFloor}
-                className="rounded-2xl bg-[#c65f2e] px-6 py-3 font-bold text-white transition hover:bg-[#a94f26] disabled:cursor-not-allowed disabled:bg-orange-300 dark:bg-orange-500 dark:hover:bg-orange-600"
+                className="rounded-md bg-[#c65f2e] px-6 py-3 font-bold text-white transition hover:bg-[#a94f26] disabled:cursor-not-allowed disabled:bg-orange-300 dark:bg-orange-500 dark:hover:bg-orange-600"
               >
                 {isSavingFloor
                   ? "Saving..."
                   : editingFloorId
-                    ? "Update Floor"
-                    : "Create Floor"}
+                    ? "Update Room"
+                    : "Create Room"}
               </button>
             </footer>
           </section>
@@ -1258,18 +1267,18 @@ export default function LocationManagementPage() {
 
       {uploadFloor && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-8">
-          <section className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[2rem] border border-[#d8d0bf] bg-[#f8f3e7] text-[#3f463b] shadow-2xl dark:border-slate-800 dark:bg-slate-900 dark:text-white">
-            <header className="flex items-start justify-between border-b border-[#ded6c7] px-6 py-5 dark:border-slate-800">
+          <section className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-slate-200 bg-white text-slate-900 shadow-lg dark:border-slate-800 dark:bg-slate-900 dark:text-white">
+            <header className="flex items-start justify-between border-b border-slate-200 px-6 py-5 dark:border-slate-800">
               <div>
                 <p className="text-sm font-bold text-[#c65f2e] dark:text-orange-300">
-                  Upload floor plan
+                  Upload room image
                 </p>
 
-                <h3 className="mt-1 text-xl font-black text-[#3f463b] dark:text-white">
+                <h3 className="mt-1 text-xl font-black text-slate-900 dark:text-white">
                   {uploadFloor.office.name} · {uploadFloor.name}
                 </h3>
 
-                <p className="mt-1 text-sm text-[#74786d] dark:text-slate-400">
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                   JPG, PNG or WEBP. Maximum size 5MB.
                 </p>
               </div>
@@ -1278,7 +1287,7 @@ export default function LocationManagementPage() {
                 type="button"
                 onClick={closeUploadFloorPlanForm}
                 disabled={isUploading}
-                className="flex h-10 w-10 items-center justify-center rounded-full text-xl text-[#74786d] transition hover:bg-[#fffdf6] disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800"
+                className="flex h-10 w-10 items-center justify-center rounded-full text-xl text-slate-500 transition hover:bg-white disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800"
               >
                 ×
               </button>
@@ -1286,15 +1295,15 @@ export default function LocationManagementPage() {
 
             <div className="space-y-5 px-6 py-6">
               {uploadFloor.floorPlanUrl && (
-                <div className="rounded-2xl border border-[#ded6c7] bg-[#fffdf6] p-4 dark:border-slate-800 dark:bg-slate-950">
-                  <p className="text-sm font-bold text-[#5f6658] dark:text-slate-300">
-                    Current floor plan
+                <div className="rounded-md border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+                  <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                    Current room image
                   </p>
 
                   <img
                     src={uploadFloor.floorPlanUrl}
-                    alt={`${uploadFloor.name} floor plan`}
-                    className="mt-3 max-h-64 w-full rounded-2xl border border-[#ded6c7] object-contain dark:border-slate-700"
+                    alt={`${uploadFloor.name} room image`}
+                    className="mt-3 max-h-64 w-full rounded-md border border-slate-200 object-contain dark:border-slate-700"
                   />
                 </div>
               )}
@@ -1302,9 +1311,9 @@ export default function LocationManagementPage() {
               <div>
                 <label
                   htmlFor="floor-plan-file"
-                  className="mb-2 block text-sm font-bold text-[#5f6658] dark:text-slate-300"
+                  className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300"
                 >
-                  New floor plan image
+                  New room image
                 </label>
 
                 <input
@@ -1316,29 +1325,29 @@ export default function LocationManagementPage() {
                       event.target.files?.[0] ?? null,
                     )
                   }
-                  className="w-full rounded-2xl border border-[#ded6c7] bg-[#fffdf6] px-4 py-3 text-sm font-medium text-[#3f463b] file:mr-4 file:rounded-xl file:border-0 file:bg-pink-50 file:px-4 file:py-2 file:font-bold file:text-pink-600 hover:file:bg-pink-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:file:bg-pink-500/20 dark:file:text-pink-300"
+                  className="w-full rounded-md border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 file:mr-4 file:rounded-xl file:border-0 file:bg-pink-50 file:px-4 file:py-2 file:font-bold file:text-pink-600 hover:file:bg-pink-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:file:bg-pink-500/20 dark:file:text-pink-300"
                 />
 
                 {selectedFloorPlanFile && (
-                  <p className="mt-2 text-sm text-[#74786d] dark:text-slate-400">
+                  <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
                     Selected: {selectedFloorPlanFile.name}
                   </p>
                 )}
               </div>
 
               {uploadError && (
-                <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
+                <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
                   {uploadError}
                 </div>
               )}
             </div>
 
-            <footer className="flex flex-col-reverse gap-3 border-t border-[#ded6c7] px-6 py-5 sm:flex-row sm:justify-end dark:border-slate-800">
+            <footer className="flex flex-col-reverse gap-3 border-t border-slate-200 px-6 py-5 sm:flex-row sm:justify-end dark:border-slate-800">
               <button
                 type="button"
                 onClick={closeUploadFloorPlanForm}
                 disabled={isUploading}
-                className="rounded-2xl border border-[#ded6c7] bg-[#fffdf6] px-5 py-3 font-bold text-[#5f6658] transition hover:bg-[#f3efe3] disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-800"
+                className="rounded-md border border-slate-200 bg-white px-5 py-3 font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-800"
               >
                 Cancel
               </button>
@@ -1347,9 +1356,9 @@ export default function LocationManagementPage() {
                 type="button"
                 onClick={() => void handleUploadFloorPlan()}
                 disabled={isUploading}
-                className="rounded-2xl bg-[#c65f2e] px-6 py-3 font-bold text-white transition hover:bg-[#a94f26] disabled:cursor-not-allowed disabled:bg-orange-300 dark:bg-orange-500 dark:hover:bg-orange-600"
+                className="rounded-md bg-[#c65f2e] px-6 py-3 font-bold text-white transition hover:bg-[#a94f26] disabled:cursor-not-allowed disabled:bg-orange-300 dark:bg-orange-500 dark:hover:bg-orange-600"
               >
-                {isUploading ? "Uploading..." : "Upload Floor Plan"}
+                {isUploading ? "Uploading..." : "Upload Room Image"}
               </button>
             </footer>
           </section>

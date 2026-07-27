@@ -70,6 +70,14 @@ import type {
   ResourcesApiResponse,
 } from "@/models/resource";
 
+import type {
+  UpdateProfileRequest,
+  UpdateProfileResponse,
+  UploadCoverImageResponse,
+  UploadProfileImageResponse,
+  UserProfile,
+} from "@/models/profile";
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
 
 type ApiRequestOptions = RequestInit & {
@@ -591,4 +599,81 @@ export async function markAllNotificationsRead(): Promise<void> {
 export async function deleteNotification(id: number): Promise<void> {
   const response = await apiDelete<NotificationActionApiResponse>(`/api/notifications/${id}`);
   if (!response.success) throw new Error(response.message || "Unable to delete notification.");
+}
+export async function getMyProfile(): Promise<UserProfile> {
+  const response = await fetch("/api/profile");
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.message);
+  }
+
+  return result;
+}
+export async function updateMyProfile(
+  request: UpdateProfileRequest,
+): Promise<UpdateProfileResponse> {
+  const response = await fetch("/api/profile", {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(request),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      result.message || "Unable to update profile.",
+    );
+  }
+
+  return result;
+}
+export async function uploadMyProfilePhoto(
+  file: File,
+): Promise<UploadProfileImageResponse> {
+  const formData = new FormData();
+
+  formData.append("file", file);
+
+  const response = await fetch("/api/profile/photo", {
+    method: "POST",
+    body: formData,
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      result.message || "Unable to upload profile photo.",
+    );
+  }
+
+  return result;
+}
+
+export async function uploadMyCoverPhoto(
+  file: File,
+): Promise<UploadCoverImageResponse> {
+  const formData = new FormData();
+
+  formData.append("file", file);
+
+  const response = await fetch("/api/profile/cover", {
+    method: "POST",
+    body: formData,
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      result.message || "Unable to upload cover photo.",
+    );
+  }
+
+  return result;
 }

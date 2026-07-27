@@ -73,17 +73,22 @@ model Department {
 }
 
 model User {
-  id           Int      @id @default(autoincrement())
-  employeeCode String?  @unique @db.VarChar(50)
-  fullName     String   @db.VarChar(150)
-  email        String   @unique @db.VarChar(191)
-  passwordHash String?  @db.VarChar(255)
-  role         UserRole @default(EMPLOYEE)
-  departmentId Int?
-  managerId    Int?
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id              Int      @id @default(autoincrement())
+  employeeCode    String?  @unique @db.VarChar(50)
+  fullName        String   @db.VarChar(150)
+  email           String   @unique @db.VarChar(191)
+  passwordHash    String?  @db.VarChar(255)
+  profileImageUrl String?  @db.VarChar(500)
+  coverImageUrl   String?  @db.VarChar(500)
+  phoneNumber     String?  @db.VarChar(30)
+  jobTitle        String?  @db.VarChar(100)
+  bio             String?  @db.VarChar(500)
+  role            UserRole @default(EMPLOYEE)
+  departmentId    Int?
+  managerId       Int?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   department Department? @relation(fields: [departmentId], references: [id])
 
@@ -280,16 +285,16 @@ model EmailLog {
 }
 
 model Notification {
-  id          Int              @id @default(autoincrement())
-  userId      Int
-  type        NotificationType
-  title       String           @db.VarChar(150)
-  message     String           @db.VarChar(500)
-  actionUrl   String?          @db.VarChar(500)
-  relatedId   Int?
-  isRead      Boolean          @default(false)
-  readAt      DateTime?
-  createdAt   DateTime         @default(now())
+  id        Int              @id @default(autoincrement())
+  userId    Int
+  type      NotificationType
+  title     String           @db.VarChar(150)
+  message   String           @db.VarChar(500)
+  actionUrl String?          @db.VarChar(500)
+  relatedId Int?
+  isRead    Boolean          @default(false)
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

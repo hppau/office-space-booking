@@ -28,7 +28,7 @@ function getRoleLabel(role: CurrentUser["role"]) {
 }
 function getHomeRoute(role: CurrentUser["role"]) {
   if (role === "MANAGER") return "/approvals";
-  if (role === "SUPER_ADMIN") return "/room-management";
+  if (role === "SUPER_ADMIN") return "/room-designer";
   return "/book";
 }
 function getInitials(name: string) { return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? "").join("") || "U"; }
@@ -130,7 +130,29 @@ export default function DashboardNavbar() {
               </div>}
             </div>
 
-            <div className="hidden items-center gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 xl:flex dark:border-slate-800 dark:bg-slate-900"><div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">{getInitials(currentUser.fullName)}</div><div><p className="max-w-36 truncate text-sm font-semibold text-slate-900 dark:text-white">{currentUser.fullName}</p><p className="text-xs text-slate-500">{getRoleLabel(currentUser.role)}</p></div></div>
+            <Link
+              href="/profile"
+              aria-label="Open profile"
+              title="Open profile"
+              className={`hidden items-center gap-3 rounded-md border px-3 py-2 transition xl:flex ${
+                pathname === "/profile" || pathname.startsWith("/profile/")
+                  ? "border-blue-600 bg-blue-50 dark:border-blue-500 dark:bg-blue-950/40"
+                  : "border-slate-200 bg-slate-50 hover:border-blue-300 hover:bg-blue-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-blue-700 dark:hover:bg-blue-950/30"
+              }`}
+            >
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">
+                {getInitials(currentUser.fullName)}
+              </div>
+
+              <div className="min-w-0 text-left">
+                <p className="max-w-36 truncate text-sm font-semibold text-slate-900 dark:text-white">
+                  {currentUser.fullName}
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {getRoleLabel(currentUser.role)}
+                </p>
+              </div>
+            </Link>
             <button type="button" onClick={handleToggleTheme} className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200" aria-label="Toggle theme"><i className={themeMode === "dark" ? "fa-solid fa-sun" : "fa-solid fa-moon"} /></button>
             <button type="button" onClick={() => void handleLogout()} className="hidden items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 sm:inline-flex dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"><i className="fa-solid fa-right-from-bracket" /><span className="hidden 2xl:inline">Logout</span></button>
           </div>

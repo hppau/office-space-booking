@@ -134,7 +134,7 @@ export default function DashboardNavbar() {
               href="/profile"
               aria-label="Open profile"
               title="Open profile"
-              className={`hidden items-center gap-3 rounded-md border px-3 py-2 transition xl:flex ${
+              className={`flex items-center gap-2 rounded-md border px-2 py-2 transition sm:gap-3 sm:px-3 ${
                 pathname === "/profile" || pathname.startsWith("/profile/")
                   ? "border-blue-600 bg-blue-50 dark:border-blue-500 dark:bg-blue-950/40"
                   : "border-slate-200 bg-slate-50 hover:border-blue-300 hover:bg-blue-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-blue-700 dark:hover:bg-blue-950/30"
@@ -144,10 +144,11 @@ export default function DashboardNavbar() {
                 {getInitials(currentUser.fullName)}
               </div>
 
-              <div className="min-w-0 text-left">
+              <div className="hidden min-w-0 text-left sm:block">
                 <p className="max-w-36 truncate text-sm font-semibold text-slate-900 dark:text-white">
                   {currentUser.fullName}
                 </p>
+
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   {getRoleLabel(currentUser.role)}
                 </p>

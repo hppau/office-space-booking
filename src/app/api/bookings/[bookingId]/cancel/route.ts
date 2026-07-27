@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/services/auth/session-service";
+import { notifyBookingCancelled } from "@/services/notifications/notification-service";
 
 type CancelBookingRequest = {
   cancellationReason: string;
@@ -74,9 +75,8 @@ export async function POST(
     }
 
     const booking = await prisma.booking.findUnique({
-      where: {
-        id: bookingId,
-      },
+      where: { id: bookingId },
+      include: { user: true, resource: { include: { floor: true } } },
     });
 
     if (!booking) {
@@ -138,6 +138,14 @@ export async function POST(
         cancellationReason: true,
         updatedAt: true,
       },
+    });
+
+    await notifyBookingCancelled({
+      bookingId: booking.id,
+      bookingNumber: booking.bookingNumber,
+      employeeId: booking.userId,
+      employeeName: booking.user.fullName,
+      roomName: booking.resource.floor.name,
     });
 
     return NextResponse.json({

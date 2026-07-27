@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getCurrentUser } from "@/services/auth/session-service";
+import { notifyRoomUpdate } from "@/services/notifications/notification-service";
 
 type RouteContext = {
   params: Promise<{
@@ -335,6 +336,8 @@ export async function POST(
           );
         }
       }
+
+      await notifyRoomUpdate({ actorId: currentUser.id, roomId: updatedFloor.id, roomName: updatedFloor.name, kind: "IMAGE_UPDATED" });
 
       return NextResponse.json({
         success: true,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/services/auth/session-service";
 import type { SpaceMapPositionRequest } from "@/models/space-management";
+import { notifyRoomUpdate } from "@/services/notifications/notification-service";
 
 type RouteContext = {
   params: Promise<{
@@ -199,6 +200,8 @@ export async function PUT(
         },
       },
     });
+
+    await notifyRoomUpdate({ actorId: currentUser.id, roomId: updatedSpace.floor.id, roomName: updatedSpace.floor.name, kind: "AREA_UPDATED" });
 
     return NextResponse.json({
       success: true,

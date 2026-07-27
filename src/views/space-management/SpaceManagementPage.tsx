@@ -6,6 +6,7 @@ import {
   deactivateManagedSpace,
   getManagedFloors,
   getManagedSpaces,
+  permanentlyDeleteSpace,
   updateManagedSpace,
 } from "@/api/api-service";
 import type {
@@ -348,6 +349,36 @@ export default function SpaceManagementPage() {
     }
   }
 
+  async function handleDeleteSpace(space: ManagedSpace) {
+    const confirmed = window.confirm(
+      `Permanently delete ${space.code} - ${space.name}?\n\nThis action cannot be undone.`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setActionMessage("");
+
+      const result = await permanentlyDeleteSpace(space.id);
+
+      setSpaces((currentSpaces) =>
+        currentSpaces.filter((currentSpace) => currentSpace.id !== space.id),
+      );
+
+      setActionMessage(
+        result?.message ?? "Space permanently deleted successfully.",
+      );
+    } catch (error) {
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : "Unable to permanently delete space.",
+      );
+    }
+  }
+
   const activeCount = spaces.filter((space) => space.status === "ACTIVE").length;
   const maintenanceCount = spaces.filter(
     (space) => space.status === "MAINTENANCE",
@@ -661,6 +692,15 @@ export default function SpaceManagementPage() {
                             Deactivate
                           </button>
                         )}
+
+                        <button
+                          type="button"
+                          onClick={() => void handleDeleteSpace(space)}
+                          className="rounded-xl bg-red-600 px-3 py-2 text-sm font-bold text-white transition hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
+                        >
+                          <i className="fa-solid fa-trash mr-2" />
+                          Delete
+                        </button>
                       </div>
                     </td>
                   </tr>

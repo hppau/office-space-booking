@@ -4,28 +4,18 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   createFloorForManagement,
-  createManagedOffice,
   deactivateFloorForManagement,
-  deactivateManagedOffice,
   getFloorsForManagement,
   getManagedOffices,
+  permanentlyDeleteRoom,
   updateFloorForManagement,
-  updateManagedOffice,
   uploadFloorPlanImage,
 } from "@/api/api-service";
 import type {
   FloorFormData,
   ManagedFloor,
   ManagedOffice,
-  OfficeFormData,
 } from "@/models/location-management";
-
-const emptyOfficeForm: OfficeFormData = {
-  name: "",
-  address: "",
-  timezone: "Asia/Singapore",
-  isActive: true,
-};
 
 const emptyFloorForm: FloorFormData = {
   name: "",
@@ -36,12 +26,6 @@ const emptyFloorForm: FloorFormData = {
 
 const inputClassName =
   "w-full rounded-md border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 outline-none transition placeholder:text-[#aaa08c] focus:border-[#c65f2e] focus:ring-2 focus:ring-[#c65f2e]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-orange-300 dark:focus:ring-orange-300/20";
-
-const selectClassName =
-  "w-full rounded-md border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 outline-none transition focus:border-[#c65f2e] focus:ring-2 focus:ring-[#c65f2e]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-orange-300 dark:focus:ring-orange-300/20";
-
-const textareaClassName =
-  "w-full resize-none rounded-md border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 outline-none transition placeholder:text-[#aaa08c] focus:border-[#c65f2e] focus:ring-2 focus:ring-[#c65f2e]/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-orange-300 dark:focus:ring-orange-300/20";
 
 function getActiveStyles(isActive: boolean): string {
   return isActive
@@ -56,43 +40,21 @@ function getActiveLabel(isActive: boolean): string {
 export default function LocationManagementPage() {
   const [offices, setOffices] = useState<ManagedOffice[]>([]);
   const [floors, setFloors] = useState<ManagedFloor[]>([]);
-
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-
-  const [activeTab, setActiveTab] = useState<"OFFICES" | "FLOORS">(
-    "OFFICES",
-  );
-
-  const [officeSearch, setOfficeSearch] = useState("");
   const [floorSearch, setFloorSearch] = useState("");
 
-  const [isOfficeFormOpen, setIsOfficeFormOpen] = useState(false);
-  const [editingOfficeId, setEditingOfficeId] = useState<number | null>(
-    null,
-  );
-  const [officeForm, setOfficeForm] =
-    useState<OfficeFormData>(emptyOfficeForm);
-  const [officeFormError, setOfficeFormError] = useState("");
-  const [isSavingOffice, setIsSavingOffice] = useState(false);
-
   const [isFloorFormOpen, setIsFloorFormOpen] = useState(false);
-  const [editingFloorId, setEditingFloorId] = useState<number | null>(
-    null,
-  );
-  const [floorForm, setFloorForm] =
-    useState<FloorFormData>(emptyFloorForm);
+  const [editingFloorId, setEditingFloorId] = useState<number | null>(null);
+  const [floorForm, setFloorForm] = useState<FloorFormData>(emptyFloorForm);
   const [floorFormError, setFloorFormError] = useState("");
   const [isSavingFloor, setIsSavingFloor] = useState(false);
 
-  const [uploadFloor, setUploadFloor] = useState<ManagedFloor | null>(
-    null,
-  );
+  const [uploadFloor, setUploadFloor] = useState<ManagedFloor | null>(null);
   const [selectedFloorPlanFile, setSelectedFloorPlanFile] =
     useState<File | null>(null);
   const [uploadError, setUploadError] = useState("");
   const [isUploading, setIsUploading] = useState(false);
-
   const [actionMessage, setActionMessage] = useState("");
 
   useEffect(() => {
@@ -110,7 +72,6 @@ export default function LocationManagementPage() {
         setFloors(floorRecords);
       } catch (error) {
         console.error("Failed to load room management data:", error);
-
         setLoadError(
           error instanceof Error
             ? error.message
@@ -124,24 +85,15 @@ export default function LocationManagementPage() {
     void loadPageData();
   }, []);
 
-  const activeOffices = useMemo(() => {
-    return offices.filter((office) => office.isActive);
+  const singaporeOffice = useMemo(() => {
+    return (
+      offices.find(
+        (office) =>
+          office.isActive &&
+          office.name.toLowerCase().includes("singapore"),
+      ) ?? offices.find((office) => office.isActive) ?? null
+    );
   }, [offices]);
-
-  const filteredOffices = useMemo(() => {
-    const normalizedSearch = officeSearch.trim().toLowerCase();
-
-    return offices.filter((office) => {
-      return (
-        !normalizedSearch ||
-        office.name.toLowerCase().includes(normalizedSearch) ||
-        office.timezone.toLowerCase().includes(normalizedSearch) ||
-        (office.address ?? "")
-          .toLowerCase()
-          .includes(normalizedSearch)
-      );
-    });
-  }, [offices, officeSearch]);
 
   const filteredFloors = useMemo(() => {
     const normalizedSearch = floorSearch.trim().toLowerCase();
@@ -150,21 +102,17 @@ export default function LocationManagementPage() {
       return (
         !normalizedSearch ||
         floor.name.toLowerCase().includes(normalizedSearch) ||
-        floor.office.name.toLowerCase().includes(normalizedSearch) ||
-        String(floor.floorNumber ?? "").includes(normalizedSearch)
+        String(floor.floorNumber ?? "").includes(normalizedSearch) ||
+        getActiveLabel(floor.isActive)
+          .toLowerCase()
+          .includes(normalizedSearch)
       );
     });
   }, [floors, floorSearch]);
 
-  function updateOfficeForm<K extends keyof OfficeFormData>(
-    key: K,
-    value: OfficeFormData[K],
-  ) {
-    setOfficeForm((currentForm) => ({
-      ...currentForm,
-      [key]: value,
-    }));
-  }
+  const activeFloorCount = floors.filter((floor) => floor.isActive).length;
+  const floorPlanCount = floors.filter((floor) => floor.floorPlanUrl).length;
+  const totalFloorCount = floors.length;
 
   function updateFloorForm<K extends keyof FloorFormData>(
     key: K,
@@ -176,43 +124,19 @@ export default function LocationManagementPage() {
     }));
   }
 
-  function openCreateOfficeForm() {
-    setEditingOfficeId(null);
-    setOfficeForm(emptyOfficeForm);
-    setOfficeFormError("");
-    setActionMessage("");
-    setIsOfficeFormOpen(true);
-  }
-
-  function openEditOfficeForm(office: ManagedOffice) {
-    setEditingOfficeId(office.id);
-    setOfficeForm({
-      name: office.name,
-      address: office.address ?? "",
-      timezone: office.timezone,
-      isActive: office.isActive,
-    });
-    setOfficeFormError("");
-    setActionMessage("");
-    setIsOfficeFormOpen(true);
-  }
-
-  function closeOfficeForm() {
-    if (isSavingOffice) {
+  function openCreateFloorForm() {
+    if (!singaporeOffice) {
+      setActionMessage("");
+      window.alert(
+        "No active Singapore office was found. Please contact the system administrator.",
+      );
       return;
     }
 
-    setIsOfficeFormOpen(false);
-    setEditingOfficeId(null);
-    setOfficeForm(emptyOfficeForm);
-    setOfficeFormError("");
-  }
-
-  function openCreateFloorForm() {
     setEditingFloorId(null);
     setFloorForm({
       ...emptyFloorForm,
-      officeId: activeOffices[0]?.id ?? 0,
+      officeId: singaporeOffice.id,
     });
     setFloorFormError("");
     setActionMessage("");
@@ -260,30 +184,6 @@ export default function LocationManagementPage() {
     setUploadError("");
   }
 
-  function validateOfficeForm(): string {
-    if (!officeForm.name.trim()) {
-      return "Office name is required.";
-    }
-
-    if (officeForm.name.trim().length > 150) {
-      return "Office name cannot exceed 150 characters.";
-    }
-
-    if (officeForm.address.length > 500) {
-      return "Address cannot exceed 500 characters.";
-    }
-
-    if (!officeForm.timezone.trim()) {
-      return "Timezone is required.";
-    }
-
-    if (officeForm.timezone.trim().length > 100) {
-      return "Timezone cannot exceed 100 characters.";
-    }
-
-    return "";
-  }
-
   function validateFloorForm(): string {
     if (!floorForm.name.trim()) {
       return "Room name is required.";
@@ -294,7 +194,7 @@ export default function LocationManagementPage() {
     }
 
     if (!floorForm.officeId) {
-      return "Please select an office.";
+      return "The Singapore office could not be assigned.";
     }
 
     if (
@@ -306,78 +206,6 @@ export default function LocationManagementPage() {
     }
 
     return "";
-  }
-
-  async function handleSaveOffice() {
-    const validationError = validateOfficeForm();
-
-    if (validationError) {
-      setOfficeFormError(validationError);
-      return;
-    }
-
-    try {
-      setIsSavingOffice(true);
-      setOfficeFormError("");
-      setActionMessage("");
-
-      const request = {
-        name: officeForm.name.trim(),
-        address: officeForm.address.trim() || null,
-        timezone: officeForm.timezone.trim() || "Asia/Singapore",
-        isActive: officeForm.isActive,
-      };
-
-      if (editingOfficeId) {
-        const updatedOffice = await updateManagedOffice(
-          editingOfficeId,
-          request,
-        );
-
-        setOffices((currentOffices) =>
-          currentOffices.map((office) =>
-            office.id === updatedOffice.id ? updatedOffice : office,
-          ),
-        );
-
-        setFloors((currentFloors) =>
-          currentFloors.map((floor) =>
-            floor.officeId === updatedOffice.id
-              ? {
-                  ...floor,
-                  office: {
-                    ...floor.office,
-                    name: updatedOffice.name,
-                  },
-                }
-              : floor,
-          ),
-        );
-
-        setActionMessage("Office updated successfully.");
-      } else {
-        const createdOffice = await createManagedOffice(request);
-
-        setOffices((currentOffices) => [
-          ...currentOffices,
-          createdOffice,
-        ]);
-
-        setActionMessage("Office created successfully.");
-      }
-
-      setIsOfficeFormOpen(false);
-      setEditingOfficeId(null);
-      setOfficeForm(emptyOfficeForm);
-    } catch (error) {
-      setOfficeFormError(
-        error instanceof Error
-          ? error.message
-          : "Unable to save office.",
-      );
-    } finally {
-      setIsSavingOffice(false);
-    }
   }
 
   async function handleSaveFloor() {
@@ -418,9 +246,7 @@ export default function LocationManagementPage() {
         setActionMessage("Room updated successfully.");
       } else {
         const createdFloor = await createFloorForManagement(request);
-
         setFloors((currentFloors) => [...currentFloors, createdFloor]);
-
         setActionMessage("Room created successfully.");
       }
 
@@ -429,44 +255,10 @@ export default function LocationManagementPage() {
       setFloorForm(emptyFloorForm);
     } catch (error) {
       setFloorFormError(
-        error instanceof Error
-          ? error.message
-          : "Unable to save room.",
+        error instanceof Error ? error.message : "Unable to save room.",
       );
     } finally {
       setIsSavingFloor(false);
-    }
-  }
-
-  async function handleDeactivateOffice(office: ManagedOffice) {
-    const confirmed = window.confirm(
-      `Deactivate office "${office.name}"? This will not delete existing rooms or bookable areas.`,
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      setActionMessage("");
-
-      const deactivatedOffice = await deactivateManagedOffice(office.id);
-
-      setOffices((currentOffices) =>
-        currentOffices.map((currentOffice) =>
-          currentOffice.id === deactivatedOffice.id
-            ? deactivatedOffice
-            : currentOffice,
-        ),
-      );
-
-      setActionMessage("Office deactivated successfully.");
-    } catch (error) {
-      window.alert(
-        error instanceof Error
-          ? error.message
-          : "Unable to deactivate office.",
-      );
     }
   }
 
@@ -481,10 +273,7 @@ export default function LocationManagementPage() {
 
     try {
       setActionMessage("");
-
-      const deactivatedFloor = await deactivateFloorForManagement(
-        floor.id,
-      );
+      const deactivatedFloor = await deactivateFloorForManagement(floor.id);
 
       setFloors((currentFloors) =>
         currentFloors.map((currentFloor) =>
@@ -500,6 +289,36 @@ export default function LocationManagementPage() {
         error instanceof Error
           ? error.message
           : "Unable to deactivate room.",
+      );
+    }
+  }
+
+  async function handleDeleteFloor(floor: ManagedFloor) {
+    const confirmed = window.confirm(
+      `Permanently delete room "${floor.name}"?\n\nAll spaces inside this room will also be deleted. This action cannot be undone.`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setActionMessage("");
+
+      const result = await permanentlyDeleteRoom(floor.id);
+
+      setFloors((currentFloors) =>
+        currentFloors.filter((currentFloor) => currentFloor.id !== floor.id),
+      );
+
+      setActionMessage(
+        result?.message ?? "Room permanently deleted successfully.",
+      );
+    } catch (error) {
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : "Unable to permanently delete room.",
       );
     }
   }
@@ -544,14 +363,10 @@ export default function LocationManagementPage() {
     }
   }
 
-  const activeOfficeCount = offices.filter((office) => office.isActive).length;
-  const activeFloorCount = floors.filter((floor) => floor.isActive).length;
-  const floorPlanCount = floors.filter((floor) => floor.floorPlanUrl).length;
-
   return (
     <div className="mx-auto max-w-7xl">
-      <section className="overflow-hidden rounded-none border border-slate-200 bg-white shadow-none dark:border-slate-800 dark:bg-slate-900">
-        <div className="relative bg-gradient-to-br from-[#c9d2bd] via-[#e8e3d3] to-[#f6efe2] px-1 py-6 dark:from-slate-950 dark:via-slate-900 dark:to-[#06070b] sm:px-1">
+      <section className="border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#c9d2bd] via-[#e8e3d3] to-[#f6efe2] px-6 py-8 dark:from-slate-950 dark:via-slate-900 dark:to-[#06070b] sm:px-8">
           <div className="absolute right-[-40px] top-[-40px] h-64 w-64 rounded-full bg-pink-300/20 blur-3xl dark:bg-pink-500/10" />
           <div className="absolute bottom-[-60px] left-[-30px] h-72 w-72 rounded-full bg-[#87977b]/30 blur-3xl dark:bg-orange-500/10" />
 
@@ -561,36 +376,30 @@ export default function LocationManagementPage() {
                 HR Management
               </p>
 
-              <h2 className="mt-5 text-5xl font-black tracking-tight text-white drop-shadow-none dark:text-white sm:text-6xl">
+              <h2 className="mt-4 text-5xl font-black tracking-tight text-white sm:text-6xl">
                 Room Management
               </h2>
 
-              <p className="mt-5 max-w-2xl text-base leading-7 text-[#5e6558] dark:text-slate-300">
-                Create rooms, upload one room image for each room, and manage
-                the bookable areas shown on each room layout.
+              <p className="mt-4 max-w-2xl text-base leading-7 text-[#5e6558] dark:text-slate-300">
+                Create rooms, upload room images, and manage the bookable
+                areas shown on each room layout.
               </p>
+
+              <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/65 px-4 py-2 text-sm font-bold text-slate-700 backdrop-blur dark:border-slate-700 dark:bg-slate-950/60 dark:text-slate-300">
+                <i className="fa-solid fa-location-dot text-[#c65f2e] dark:text-orange-300" />
+                {singaporeOffice?.name ?? "Singapore Office"}
+              </div>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <button
-                type="button"
-                onClick={openCreateOfficeForm}
-                className="rounded-md bg-[#c65f2e] px-5 py-3 font-bold text-white shadow-none transition hover:bg-[#a94f26] dark:bg-orange-500 dark:hover:bg-orange-600"
-              >
-                <i className="fa-solid fa-plus mr-2" />
-                Add Office
-              </button>
-
-              <button
-                type="button"
-                onClick={openCreateFloorForm}
-                disabled={activeOffices.length === 0}
-                className="rounded-md border border-white/70 bg-white/70 px-5 py-3 font-bold text-slate-700 shadow-none backdrop-blur transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-300 dark:hover:bg-slate-900"
-              >
-                <i className="fa-solid fa-door-open mr-2 text-[#c65f2e] dark:text-orange-300" />
-                Add Room
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={openCreateFloorForm}
+              disabled={!singaporeOffice}
+              className="rounded-md bg-[#c65f2e] px-5 py-3 font-bold text-white transition hover:bg-[#a94f26] disabled:cursor-not-allowed disabled:opacity-60 dark:bg-orange-500 dark:hover:bg-orange-600"
+            >
+              <i className="fa-solid fa-door-open mr-2" />
+              Add Room
+            </button>
           </div>
         </div>
       </section>
@@ -601,94 +410,60 @@ export default function LocationManagementPage() {
         </div>
       )}
 
-      {activeOffices.length === 0 && !isLoading && !loadError && (
+      {!singaporeOffice && !isLoading && !loadError && (
         <div className="mt-6 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300">
-          Please create at least one active office before creating a room.
+          No active Singapore office was found. Room creation is temporarily
+          unavailable.
         </div>
       )}
 
       <section className="mt-8 grid gap-5 sm:grid-cols-3">
-        <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-none dark:border-slate-800 dark:bg-slate-900">
+        <div className="border-b-2 border-[#c65f2e] bg-white px-1 py-5 dark:bg-slate-900">
           <p className="text-sm font-bold text-slate-500 dark:text-slate-400">
-            Active Offices
+            Total Rooms
           </p>
-
-          <p className="mt-3 text-4xl font-black text-slate-900 dark:text-white">
-            {activeOfficeCount}
+          <p className="mt-2 text-4xl font-black text-slate-900 dark:text-white">
+            {totalFloorCount}
           </p>
         </div>
 
-        <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-none dark:border-slate-800 dark:bg-slate-900">
+        <div className="border-b-2 border-green-500 bg-white px-1 py-5 dark:bg-slate-900">
           <p className="text-sm font-bold text-slate-500 dark:text-slate-400">
             Active Rooms
           </p>
-
-          <p className="mt-3 text-4xl font-black text-slate-900 dark:text-white">
+          <p className="mt-2 text-4xl font-black text-slate-900 dark:text-white">
             {activeFloorCount}
           </p>
         </div>
 
-        <div className="rounded-lg border border-pink-200 bg-pink-50 p-6 dark:border-pink-900/60 dark:bg-pink-950/30">
-          <p className="text-sm font-bold text-pink-700 dark:text-pink-200">
+        <div className="border-b-2 border-pink-500 bg-white px-1 py-5 dark:bg-slate-900">
+          <p className="text-sm font-bold text-slate-500 dark:text-slate-400">
             Room Images
           </p>
-
-          <p className="mt-3 text-4xl font-black text-pink-900 dark:text-pink-100">
+          <p className="mt-2 text-4xl font-black text-slate-900 dark:text-white">
             {floorPlanCount}
           </p>
         </div>
       </section>
 
-      <section className="mt-8 rounded-lg border border-slate-200 bg-white p-2 shadow-none dark:border-slate-800 dark:bg-slate-900">
-        <div className="grid gap-2 sm:grid-cols-2">
-          <button
-            type="button"
-            onClick={() => setActiveTab("OFFICES")}
-            className={`rounded-md px-5 py-3 text-sm font-bold transition ${
-              activeTab === "OFFICES"
-                ? "bg-[#c65f2e] text-white shadow-none dark:bg-orange-500"
-                : "text-slate-700 hover:bg-white dark:text-slate-300 dark:hover:bg-slate-800"
-            }`}
-          >
-            Offices
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab("FLOORS")}
-            className={`rounded-md px-5 py-3 text-sm font-bold transition ${
-              activeTab === "FLOORS"
-                ? "bg-[#c65f2e] text-white shadow-none dark:bg-orange-500"
-                : "text-slate-700 hover:bg-white dark:text-slate-300 dark:hover:bg-slate-800"
-            }`}
-          >
-            Rooms
-          </button>
-        </div>
-      </section>
-
       {isLoading && (
-        <section className="mt-8 rounded-lg border border-slate-200 bg-white p-12 text-center shadow-none dark:border-slate-800 dark:bg-slate-900">
+        <section className="mt-8 border border-slate-200 bg-white p-12 text-center dark:border-slate-800 dark:bg-slate-900">
           <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-[#ded5c2] border-t-[#c65f2e] dark:border-slate-700 dark:border-t-orange-300" />
-
           <p className="mt-5 font-bold text-slate-700 dark:text-slate-300">
-            Loading office and room data...
+            Loading room data...
           </p>
         </section>
       )}
 
       {!isLoading && loadError && (
-        <section className="mt-8 rounded-lg border border-red-200 bg-red-50 p-8 text-center dark:border-red-900/60 dark:bg-red-950/40">
+        <section className="mt-8 border border-red-200 bg-red-50 p-8 text-center dark:border-red-900/60 dark:bg-red-950/40">
           <div className="text-4xl">⚠️</div>
-
           <h3 className="mt-4 text-lg font-bold text-red-900 dark:text-red-200">
             Unable to load data
           </h3>
-
           <p className="mt-2 text-sm text-red-700 dark:text-red-300">
             {loadError}
           </p>
-
           <button
             type="button"
             onClick={() => window.location.reload()}
@@ -699,187 +474,67 @@ export default function LocationManagementPage() {
         </section>
       )}
 
-      {!isLoading && !loadError && activeTab === "OFFICES" && (
+      {!isLoading && !loadError && (
         <>
-          <section className="mt-8 rounded-lg border border-slate-200 bg-white p-7 shadow-none dark:border-slate-800 dark:bg-slate-900">
-            <label
-              htmlFor="office-search"
-              className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300"
-            >
-              Search offices
-            </label>
-
-            <input
-              id="office-search"
-              type="search"
-              value={officeSearch}
-              onChange={(event) => setOfficeSearch(event.target.value)}
-              placeholder="Search by office name, address or timezone"
-              className={inputClassName}
-            />
-          </section>
-
-          {filteredOffices.length === 0 ? (
-            <section className="mt-8 rounded-lg border border-slate-200 bg-white p-12 text-center shadow-none dark:border-slate-800 dark:bg-slate-900">
-              <div className="text-5xl">🏢</div>
-
-              <h3 className="mt-5 text-xl font-black text-slate-900 dark:text-white">
-                No offices found
-              </h3>
-
-              <p className="mt-2 text-slate-500 dark:text-slate-400">
-                Create an office first before adding rooms.
-              </p>
-            </section>
-          ) : (
-            <section className="mt-8 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-none dark:border-slate-800 dark:bg-slate-900">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
-                  <thead className="bg-white dark:bg-slate-950">
-                    <tr>
-                      <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wide text-[#87977b] dark:text-slate-500">
-                        Office
-                      </th>
-
-                      <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wide text-[#87977b] dark:text-slate-500">
-                        Address
-                      </th>
-
-                      <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wide text-[#87977b] dark:text-slate-500">
-                        Timezone
-                      </th>
-
-                      <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wide text-[#87977b] dark:text-slate-500">
-                        Status
-                      </th>
-
-                      <th className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wide text-[#87977b] dark:text-slate-500">
-                        Action
-                      </th>
-                    </tr>
-                  </thead>
-
-                  <tbody className="divide-y divide-slate-200 bg-white dark:divide-slate-800 dark:bg-slate-900">
-                    {filteredOffices.map((office) => (
-                      <tr
-                        key={office.id}
-                        className="transition hover:bg-white dark:hover:bg-slate-950"
-                      >
-                        <td className="px-6 py-4">
-                          <p className="font-black text-slate-900 dark:text-white">
-                            {office.name}
-                          </p>
-                        </td>
-
-                        <td className="px-6 py-4 text-sm text-slate-700 dark:text-slate-300">
-                          {office.address || "No address"}
-                        </td>
-
-                        <td className="px-6 py-4 text-sm text-slate-700 dark:text-slate-300">
-                          {office.timezone}
-                        </td>
-
-                        <td className="px-6 py-4">
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-bold ${getActiveStyles(
-                              office.isActive,
-                            )}`}
-                          >
-                            {getActiveLabel(office.isActive)}
-                          </span>
-                        </td>
-
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() => openEditOfficeForm(office)}
-                              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-800"
-                            >
-                              Edit
-                            </button>
-
-                            {office.isActive && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  void handleDeactivateOffice(office)
-                                }
-                                className="rounded-xl border border-red-300 bg-white px-3 py-2 text-sm font-bold text-red-700 transition hover:bg-red-50 dark:border-red-900/60 dark:bg-slate-950 dark:text-red-300 dark:hover:bg-red-950/30"
-                              >
-                                Deactivate
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          <section className="mt-8 border-y border-slate-200 bg-white py-5 dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div className="w-full sm:max-w-xl">
+                <label
+                  htmlFor="floor-search"
+                  className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300"
+                >
+                  Search rooms
+                </label>
+                <input
+                  id="floor-search"
+                  type="search"
+                  value={floorSearch}
+                  onChange={(event) => setFloorSearch(event.target.value)}
+                  placeholder="Search by room name, number or status"
+                  className={inputClassName}
+                />
               </div>
-            </section>
-          )}
-        </>
-      )}
 
-      {!isLoading && !loadError && activeTab === "FLOORS" && (
-        <>
-          <section className="mt-8 rounded-lg border border-slate-200 bg-white p-7 shadow-none dark:border-slate-800 dark:bg-slate-900">
-            <label
-              htmlFor="floor-search"
-              className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300"
-            >
-              Search rooms
-            </label>
-
-            <input
-              id="floor-search"
-              type="search"
-              value={floorSearch}
-              onChange={(event) => setFloorSearch(event.target.value)}
-              placeholder="Search by room name, room number or office"
-              className={inputClassName}
-            />
+              <button
+                type="button"
+                onClick={openCreateFloorForm}
+                disabled={!singaporeOffice}
+                className="rounded-md bg-[#c65f2e] px-5 py-3 font-bold text-white transition hover:bg-[#a94f26] disabled:cursor-not-allowed disabled:opacity-60 dark:bg-orange-500 dark:hover:bg-orange-600"
+              >
+                <i className="fa-solid fa-plus mr-2" />
+                Add Room
+              </button>
+            </div>
           </section>
 
           {filteredFloors.length === 0 ? (
-            <section className="mt-8 rounded-lg border border-slate-200 bg-white p-12 text-center shadow-none dark:border-slate-800 dark:bg-slate-900">
+            <section className="mt-8 border border-slate-200 bg-white p-12 text-center dark:border-slate-800 dark:bg-slate-900">
               <div className="text-5xl">🏬</div>
-
               <h3 className="mt-5 text-xl font-black text-slate-900 dark:text-white">
                 No rooms found
               </h3>
-
               <p className="mt-2 text-slate-500 dark:text-slate-400">
-                Create a room under an active office.
+                Create the first room for the Singapore office.
               </p>
             </section>
           ) : (
-            <section className="mt-8 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-none dark:border-slate-800 dark:bg-slate-900">
+            <section className="mt-8 overflow-hidden border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
-                  <thead className="bg-white dark:bg-slate-950">
+                  <thead className="bg-slate-50 dark:bg-slate-950">
                     <tr>
                       <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wide text-[#87977b] dark:text-slate-500">
                         Room
                       </th>
-
-                      <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wide text-[#87977b] dark:text-slate-500">
-                        Office
-                      </th>
-
                       <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wide text-[#87977b] dark:text-slate-500">
                         Room Number
                       </th>
-
                       <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wide text-[#87977b] dark:text-slate-500">
                         Room Image
                       </th>
-
                       <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wide text-[#87977b] dark:text-slate-500">
                         Status
                       </th>
-
                       <th className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wide text-[#87977b] dark:text-slate-500">
                         Action
                       </th>
@@ -890,16 +545,12 @@ export default function LocationManagementPage() {
                     {filteredFloors.map((floor) => (
                       <tr
                         key={floor.id}
-                        className="transition hover:bg-white dark:hover:bg-slate-950"
+                        className="transition hover:bg-slate-50 dark:hover:bg-slate-950"
                       >
                         <td className="px-6 py-4">
                           <p className="font-black text-slate-900 dark:text-white">
                             {floor.name}
                           </p>
-                        </td>
-
-                        <td className="px-6 py-4 text-sm text-slate-700 dark:text-slate-300">
-                          {floor.office.name}
                         </td>
 
                         <td className="px-6 py-4 text-sm text-slate-700 dark:text-slate-300">
@@ -938,14 +589,14 @@ export default function LocationManagementPage() {
                             <button
                               type="button"
                               onClick={() => openUploadFloorPlanForm(floor)}
-                              className="rounded-xl border border-pink-300 bg-white px-3 py-2 text-sm font-bold text-pink-600 transition hover:bg-pink-50 dark:border-pink-500/60 dark:bg-slate-950 dark:text-pink-300 dark:hover:bg-pink-950/30"
+                              className="rounded-md border border-pink-300 bg-white px-3 py-2 text-sm font-bold text-pink-600 transition hover:bg-pink-50 dark:border-pink-500/60 dark:bg-slate-950 dark:text-pink-300 dark:hover:bg-pink-950/30"
                             >
                               Upload Image
                             </button>
 
                             <Link
                               href={`/room-area-management?roomId=${floor.id}`}
-                              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-3 py-2 text-sm font-bold text-white transition hover:bg-blue-700"
+                              className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-bold text-white transition hover:bg-blue-700"
                             >
                               <i className="fa-solid fa-map-location-dot" />
                               Manage Areas
@@ -954,7 +605,7 @@ export default function LocationManagementPage() {
                             <button
                               type="button"
                               onClick={() => openEditFloorForm(floor)}
-                              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-800"
+                              className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-800"
                             >
                               Edit
                             </button>
@@ -965,11 +616,20 @@ export default function LocationManagementPage() {
                                 onClick={() =>
                                   void handleDeactivateFloor(floor)
                                 }
-                                className="rounded-xl border border-red-300 bg-white px-3 py-2 text-sm font-bold text-red-700 transition hover:bg-red-50 dark:border-red-900/60 dark:bg-slate-950 dark:text-red-300 dark:hover:bg-red-950/30"
+                                className="rounded-md border border-red-300 bg-white px-3 py-2 text-sm font-bold text-red-700 transition hover:bg-red-50 dark:border-red-900/60 dark:bg-slate-950 dark:text-red-300 dark:hover:bg-red-950/30"
                               >
                                 Deactivate
                               </button>
                             )}
+
+                            <button
+                              type="button"
+                              onClick={() => void handleDeleteFloor(floor)}
+                              className="rounded-md bg-red-600 px-3 py-2 text-sm font-bold text-white transition hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
+                            >
+                              <i className="fa-solid fa-trash mr-2" />
+                              Delete
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -982,142 +642,6 @@ export default function LocationManagementPage() {
         </>
       )}
 
-      {isOfficeFormOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-8">
-          <section className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-slate-200 bg-white text-slate-900 shadow-lg dark:border-slate-800 dark:bg-slate-900 dark:text-white">
-            <header className="flex items-start justify-between border-b border-slate-200 px-6 py-5 dark:border-slate-800">
-              <div>
-                <p className="text-sm font-bold text-[#c65f2e] dark:text-orange-300">
-                  {editingOfficeId ? "Edit office" : "Create office"}
-                </p>
-
-                <h3 className="mt-1 text-xl font-black text-slate-900 dark:text-white">
-                  {editingOfficeId
-                    ? "Update office details"
-                    : "Add new office"}
-                </h3>
-              </div>
-
-              <button
-                type="button"
-                onClick={closeOfficeForm}
-                disabled={isSavingOffice}
-                className="flex h-10 w-10 items-center justify-center rounded-full text-xl text-slate-500 transition hover:bg-white disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800"
-              >
-                ×
-              </button>
-            </header>
-
-            <div className="space-y-5 px-6 py-6">
-              <div>
-                <label
-                  htmlFor="office-name"
-                  className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300"
-                >
-                  Office name <span className="text-red-500">*</span>
-                </label>
-
-                <input
-                  id="office-name"
-                  value={officeForm.name}
-                  onChange={(event) =>
-                    updateOfficeForm("name", event.target.value)
-                  }
-                  placeholder="Example: Singapore Office"
-                  className={inputClassName}
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="office-address"
-                  className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300"
-                >
-                  Address
-                </label>
-
-                <textarea
-                  id="office-address"
-                  value={officeForm.address}
-                  onChange={(event) =>
-                    updateOfficeForm("address", event.target.value)
-                  }
-                  rows={3}
-                  maxLength={500}
-                  placeholder="Office address"
-                  className={textareaClassName}
-                />
-
-                <p className="mt-1 text-right text-xs text-[#9b927f] dark:text-slate-500">
-                  {officeForm.address.length}/500
-                </p>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="office-timezone"
-                  className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300"
-                >
-                  Timezone
-                </label>
-
-                <input
-                  id="office-timezone"
-                  value={officeForm.timezone}
-                  onChange={(event) =>
-                    updateOfficeForm("timezone", event.target.value)
-                  }
-                  placeholder="Example: Asia/Singapore"
-                  className={inputClassName}
-                />
-              </div>
-
-              <label className="flex items-center gap-3 rounded-md border border-slate-200 bg-white p-4 text-sm font-bold text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
-                <input
-                  type="checkbox"
-                  checked={officeForm.isActive}
-                  onChange={(event) =>
-                    updateOfficeForm("isActive", event.target.checked)
-                  }
-                  className="h-4 w-4 accent-[#c65f2e]"
-                />
-                Office is active
-              </label>
-
-              {officeFormError && (
-                <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
-                  {officeFormError}
-                </div>
-              )}
-            </div>
-
-            <footer className="flex flex-col-reverse gap-3 border-t border-slate-200 px-6 py-5 sm:flex-row sm:justify-end dark:border-slate-800">
-              <button
-                type="button"
-                onClick={closeOfficeForm}
-                disabled={isSavingOffice}
-                className="rounded-md border border-slate-200 bg-white px-5 py-3 font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-800"
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                onClick={() => void handleSaveOffice()}
-                disabled={isSavingOffice}
-                className="rounded-md bg-[#c65f2e] px-6 py-3 font-bold text-white transition hover:bg-[#a94f26] disabled:cursor-not-allowed disabled:bg-orange-300 dark:bg-orange-500 dark:hover:bg-orange-600"
-              >
-                {isSavingOffice
-                  ? "Saving..."
-                  : editingOfficeId
-                    ? "Update Office"
-                    : "Create Office"}
-              </button>
-            </footer>
-          </section>
-        </div>
-      )}
-
       {isFloorFormOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-8">
           <section className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-slate-200 bg-white text-slate-900 shadow-lg dark:border-slate-800 dark:bg-slate-900 dark:text-white">
@@ -1126,19 +650,19 @@ export default function LocationManagementPage() {
                 <p className="text-sm font-bold text-[#c65f2e] dark:text-orange-300">
                   {editingFloorId ? "Edit room" : "Create room"}
                 </p>
-
                 <h3 className="mt-1 text-xl font-black text-slate-900 dark:text-white">
-                  {editingFloorId
-                    ? "Update room details"
-                    : "Add new room"}
+                  {editingFloorId ? "Update room details" : "Add new room"}
                 </h3>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  Location: {singaporeOffice?.name ?? "Singapore Office"}
+                </p>
               </div>
 
               <button
                 type="button"
                 onClick={closeFloorForm}
                 disabled={isSavingFloor}
-                className="flex h-10 w-10 items-center justify-center rounded-full text-xl text-slate-500 transition hover:bg-white disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800"
+                className="flex h-10 w-10 items-center justify-center rounded-full text-xl text-slate-500 transition hover:bg-slate-100 disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800"
               >
                 ×
               </button>
@@ -1147,41 +671,11 @@ export default function LocationManagementPage() {
             <div className="space-y-5 px-6 py-6">
               <div>
                 <label
-                  htmlFor="floor-office"
-                  className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300"
-                >
-                  Office <span className="text-red-500">*</span>
-                </label>
-
-                <select
-                  id="floor-office"
-                  value={floorForm.officeId}
-                  onChange={(event) =>
-                    updateFloorForm(
-                      "officeId",
-                      Number(event.target.value),
-                    )
-                  }
-                  className={selectClassName}
-                >
-                  <option value={0}>Select office</option>
-
-                  {activeOffices.map((office) => (
-                    <option key={office.id} value={office.id}>
-                      {office.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label
                   htmlFor="floor-name"
                   className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-300"
                 >
                   Room name <span className="text-red-500">*</span>
                 </label>
-
                 <input
                   id="floor-name"
                   value={floorForm.name}
@@ -1200,7 +694,6 @@ export default function LocationManagementPage() {
                 >
                   Room number
                 </label>
-
                 <input
                   id="floor-number"
                   type="number"
@@ -1219,7 +712,7 @@ export default function LocationManagementPage() {
                 />
               </div>
 
-              <label className="flex items-center gap-3 rounded-md border border-slate-200 bg-white p-4 text-sm font-bold text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+              <label className="flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 p-4 text-sm font-bold text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
                 <input
                   type="checkbox"
                   checked={floorForm.isActive}
@@ -1273,11 +766,9 @@ export default function LocationManagementPage() {
                 <p className="text-sm font-bold text-[#c65f2e] dark:text-orange-300">
                   Upload room image
                 </p>
-
                 <h3 className="mt-1 text-xl font-black text-slate-900 dark:text-white">
-                  {uploadFloor.office.name} · {uploadFloor.name}
+                  {uploadFloor.name}
                 </h3>
-
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                   JPG, PNG or WEBP. Maximum size 5MB.
                 </p>
@@ -1287,7 +778,7 @@ export default function LocationManagementPage() {
                 type="button"
                 onClick={closeUploadFloorPlanForm}
                 disabled={isUploading}
-                className="flex h-10 w-10 items-center justify-center rounded-full text-xl text-slate-500 transition hover:bg-white disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800"
+                className="flex h-10 w-10 items-center justify-center rounded-full text-xl text-slate-500 transition hover:bg-slate-100 disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800"
               >
                 ×
               </button>
@@ -1295,11 +786,10 @@ export default function LocationManagementPage() {
 
             <div className="space-y-5 px-6 py-6">
               {uploadFloor.floorPlanUrl && (
-                <div className="rounded-md border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+                <div className="rounded-md border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
                   <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
                     Current room image
                   </p>
-
                   <img
                     src={uploadFloor.floorPlanUrl}
                     alt={`${uploadFloor.name} room image`}
@@ -1315,7 +805,6 @@ export default function LocationManagementPage() {
                 >
                   New room image
                 </label>
-
                 <input
                   id="floor-plan-file"
                   type="file"
@@ -1325,7 +814,7 @@ export default function LocationManagementPage() {
                       event.target.files?.[0] ?? null,
                     )
                   }
-                  className="w-full rounded-md border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 file:mr-4 file:rounded-xl file:border-0 file:bg-pink-50 file:px-4 file:py-2 file:font-bold file:text-pink-600 hover:file:bg-pink-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:file:bg-pink-500/20 dark:file:text-pink-300"
+                  className="w-full rounded-md border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 file:mr-4 file:rounded-md file:border-0 file:bg-pink-50 file:px-4 file:py-2 file:font-bold file:text-pink-600 hover:file:bg-pink-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:file:bg-pink-500/20 dark:file:text-pink-300"
                 />
 
                 {selectedFloorPlanFile && (

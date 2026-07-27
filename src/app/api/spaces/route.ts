@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/services/auth/session-service";
 import type { CreateSpaceRequest } from "@/models/space-management";
+import { notifyRoomUpdate } from "@/services/notifications/notification-service";
 
 function canManageSpaces(role: string): boolean {
   return role === "HR" || role === "SUPER_ADMIN";
@@ -315,6 +316,8 @@ export async function POST(request: NextRequest) {
         },
       },
     });
+
+    await notifyRoomUpdate({ actorId: currentUser.id, roomId: createdSpace.floor.id, roomName: createdSpace.floor.name, kind: "AREA_UPDATED" });
 
     return NextResponse.json(
       {

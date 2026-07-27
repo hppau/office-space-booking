@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/services/auth/session-service";
 import { sendBookingStatusEmail } from "@/services/email/booking-email-service";
+import { notifyBookingStatus } from "@/services/notifications/notification-service";
 
 type ApprovalRequestBody = {
   action: "APPROVE" | "REJECT";
@@ -321,6 +322,15 @@ export async function POST(
           " However, the notification email could not be sent. Please check SMTP settings.";
       }
     }
+
+    await notifyBookingStatus({
+      bookingId: booking.id,
+      bookingNumber: booking.bookingNumber,
+      employeeId: booking.userId,
+      roomName: booking.resource.floor.name,
+      status: nextStatus,
+      reason: action === "REJECT" ? comment : null,
+    });
 
     let responseMessage = "Booking approved successfully.";
 

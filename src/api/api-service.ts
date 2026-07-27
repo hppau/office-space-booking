@@ -1,3 +1,4 @@
+import type { NotificationActionApiResponse, NotificationRecord, NotificationsApiResponse } from "@/models/notification";
 import type {
   ApprovalHistoryApiResponse,
   ApprovalHistoryRecord,
@@ -543,4 +544,51 @@ export async function removeSpaceMapPosition(
   }
 
   return response.data;
+}
+export async function permanentlyDeleteRoom(roomId: number) {
+  const response = await fetch(
+    `/api/floors-management/${roomId}/permanent`,
+    {
+      method: "DELETE",
+    }
+  );
+
+  return response.json();
+}
+export async function permanentlyDeleteSpace(spaceId: number) {
+  const response = await fetch(
+    `/api/spaces/${spaceId}/permanent`,
+    {
+      method: "DELETE",
+    }
+  );
+
+  return response.json();
+}
+export async function getNotifications(filter = "all", limit = 50): Promise<NotificationRecord[]> {
+  const response = await apiGet<NotificationsApiResponse>(`/api/notifications?filter=${encodeURIComponent(filter)}&limit=${limit}`);
+  if (!response.success || !response.data) throw new Error(response.message || "Unable to load notifications.");
+  return response.data;
+}
+
+export async function getNotificationPreview(): Promise<{ items: NotificationRecord[]; unreadCount: number }> {
+  const response = await apiGet<NotificationsApiResponse>("/api/notifications?filter=all&limit=5");
+  if (!response.success || !response.data) throw new Error(response.message || "Unable to load notifications.");
+  return { items: response.data, unreadCount: response.unreadCount ?? 0 };
+}
+
+export async function markNotificationRead(id: number): Promise<NotificationRecord> {
+  const response = await apiRequest<NotificationActionApiResponse>(`/api/notifications/${id}`, { method: "PATCH", body: JSON.stringify({ isRead: true }) });
+  if (!response.success || !response.data) throw new Error(response.message || "Unable to update notification.");
+  return response.data;
+}
+
+export async function markAllNotificationsRead(): Promise<void> {
+  const response = await apiRequest<NotificationActionApiResponse>("/api/notifications/read-all", { method: "PATCH" });
+  if (!response.success) throw new Error(response.message || "Unable to update notifications.");
+}
+
+export async function deleteNotification(id: number): Promise<void> {
+  const response = await apiDelete<NotificationActionApiResponse>(`/api/notifications/${id}`);
+  if (!response.success) throw new Error(response.message || "Unable to delete notification.");
 }

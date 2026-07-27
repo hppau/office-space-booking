@@ -1,10 +1,5 @@
-import SpaceManagementPage from "@/views/space-management/SpaceManagementPage";
-import ProtectedPage from "@/services/auth/ProtectedPage";
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return (
-    <ProtectedPage allowedRoles={["HR", "SUPER_ADMIN"]}>
-      <SpaceManagementPage />
-    </ProtectedPage>
-  );
+  redirect("/room-designer?tab=spaces");
 }

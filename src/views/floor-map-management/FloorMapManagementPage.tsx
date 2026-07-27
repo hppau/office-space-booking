@@ -117,6 +117,11 @@ type CreateModalState = {
   form: SpaceForm;
 } | null;
 
+type PastedAreaState = {
+  rect: Rect;
+  form: SpaceForm;
+} | null;
+
 function toNumber(
   value: string | number | null | undefined,
 ): number | null {
@@ -264,6 +269,10 @@ export default function FloorMapManagementPage() {
     useState<Interaction>(null);
   const [draftRect, setDraftRect] =
     useState<Rect | null>(null);
+  const [pastedArea, setPastedArea] =
+    useState<PastedAreaState>(null);
+  const [pastedMenuOpen, setPastedMenuOpen] =
+    useState(false);
 
   const [menuSpaceId, setMenuSpaceId] =
     useState<number | null>(null);
@@ -384,6 +393,8 @@ export default function FloorMapManagementPage() {
     setMenuSpaceId(null);
     setMode("select");
     setDraftRect(null);
+    setPastedArea(null);
+    setPastedMenuOpen(false);
     setInteraction(null);
     setActionMessage("");
   }, [selectedFloorId]);
@@ -408,6 +419,8 @@ export default function FloorMapManagementPage() {
       setMenuSpaceId(null);
       setMode("select");
       setDraftRect(null);
+      setPastedArea(null);
+      setPastedMenuOpen(false);
       setInteraction(null);
       setCreateModal(null);
       setEditModalOpen(false);
@@ -499,6 +512,7 @@ export default function FloorMapManagementPage() {
     setSelectedSpaceId(space.id);
     setMenuSpaceId(space.id);
     setMode("select");
+    setPastedMenuOpen(false);
     setActionMessage("");
   }
 
@@ -554,6 +568,7 @@ export default function FloorMapManagementPage() {
 
     if (mode === "select") {
       setMenuSpaceId(null);
+      setPastedMenuOpen(false);
       setSelectedSpaceId(0);
       return;
     }
@@ -586,9 +601,7 @@ export default function FloorMapManagementPage() {
         heightPercent: sourceRect.heightPercent,
       };
 
-      setDraftRect(duplicateRect);
-      setCreateModal({
-        mode: "duplicate",
+      setPastedArea({
         rect: duplicateRect,
         form: {
           ...spaceFormFromSpace(selectedSpace),
@@ -596,6 +609,13 @@ export default function FloorMapManagementPage() {
           name: `${selectedSpace.name} Copy`,
         },
       });
+      setPastedMenuOpen(false);
+      setDraftRect(null);
+      setMode("select");
+      setMenuSpaceId(null);
+      setActionMessage(
+        "The copied area was pasted. Click it to assign an existing space or create a new one.",
+      );
       return;
     }
 
@@ -621,7 +641,7 @@ export default function FloorMapManagementPage() {
   }
 
   function beginMove(
-    event: React.PointerEvent<HTMLButtonElement>,
+    event: React.PointerEvent<HTMLDivElement>,
     space: ManagedSpace,
   ) {
     if (mode !== "select" || isSaving) {
@@ -969,6 +989,8 @@ export default function FloorMapManagementPage() {
       setSelectedSpaceId(positioned.id);
       setCreateModal(null);
       setDraftRect(null);
+      setPastedArea(null);
+      setPastedMenuOpen(false);
       setMode("select");
       setActionMessage(
         `${positioned.code} created and placed successfully.`,
@@ -982,6 +1004,60 @@ export default function FloorMapManagementPage() {
     } finally {
       setIsSaving(false);
     }
+  }
+
+  async function handleAssignPastedArea(
+    targetId: number,
+  ) {
+    if (!pastedArea || !targetId) {
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      setActionMessage("");
+
+      const positioned =
+        await updateSpaceMapPosition(
+          targetId,
+          buildMapRequest(pastedArea.rect),
+        );
+
+      replaceSpace(positioned);
+      setSelectedSpaceId(positioned.id);
+      setPastedArea(null);
+      setPastedMenuOpen(false);
+      setMode("select");
+      setActionMessage(
+        `${positioned.code} is now assigned to the pasted area.`,
+      );
+    } catch (error) {
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : "Unable to assign the pasted area.",
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  function handlePastedAreaSelection(value: string) {
+    if (!pastedArea || !value) {
+      return;
+    }
+
+    if (value === "__create__") {
+      setCreateModal({
+        mode: "duplicate",
+        rect: pastedArea.rect,
+        form: pastedArea.form,
+      });
+      setPastedMenuOpen(false);
+      return;
+    }
+
+    void handleAssignPastedArea(Number(value));
   }
 
   async function handleSaveEdit() {
@@ -1169,8 +1245,17 @@ export default function FloorMapManagementPage() {
   }
 
   function closeCreateModal() {
+    const wasPastedArea =
+      createModal?.mode === "duplicate";
+
     setCreateModal(null);
-    setDraftRect(null);
+
+    if (wasPastedArea) {
+      setPastedMenuOpen(true);
+    } else {
+      setDraftRect(null);
+    }
+
     setMode("select");
   }
 
@@ -1382,9 +1467,10 @@ export default function FloorMapManagementPage() {
                     space.status !== "ACTIVE";
 
                   return (
-                    <button
+                    <div
                       key={space.id}
-                      type="button"
+                      role="button"
+                      tabIndex={0}
                       onPointerDown={(event) =>
                         beginMove(event, space)
                       }
@@ -1396,6 +1482,15 @@ export default function FloorMapManagementPage() {
                         event.preventDefault();
                         event.stopPropagation();
                         selectSpace(space);
+                      }}
+                      onKeyDown={(event) => {
+                        if (
+                          event.key === "Enter" ||
+                          event.key === " "
+                        ) {
+                          event.preventDefault();
+                          selectSpace(space);
+                        }
                       }}
                       className={`group absolute flex items-center justify-center rounded-xl border-2 transition ${
                         isSelected
@@ -1461,7 +1556,11 @@ export default function FloorMapManagementPage() {
                           onClick={(event) =>
                             event.stopPropagation()
                           }
-                          className="absolute left-1/2 top-full z-[80] mt-3 w-64 -translate-x-1/2 overflow-hidden rounded-md border border-slate-700 bg-[#201719] text-left text-sm text-white shadow-lg"
+                          className={`absolute top-0 z-[80] w-64 overflow-hidden rounded-md border border-slate-700 bg-[#201719] text-left text-sm text-white shadow-lg ${
+                            rect.xPercent + rect.widthPercent > 72
+                              ? "right-full mr-3"
+                              : "left-full ml-3"
+                          }`}
                         >
                           <div className="border-b border-white/10 px-4 py-3">
                             <p className="truncate font-black">
@@ -1525,9 +1624,122 @@ export default function FloorMapManagementPage() {
                           </button>
                         </div>
                       )}
-                    </button>
+                    </div>
                   );
                 })}
+
+                {pastedArea && (
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onPointerDown={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                    }}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setMenuSpaceId(null);
+                      setPastedMenuOpen((current) =>
+                        !current,
+                      );
+                    }}
+                    onKeyDown={(event) => {
+                      if (
+                        event.key === "Enter" ||
+                        event.key === " "
+                      ) {
+                        event.preventDefault();
+                        setPastedMenuOpen((current) =>
+                          !current,
+                        );
+                      }
+                    }}
+                    className="absolute z-40 flex cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-amber-700 bg-amber-300/45 ring-4 ring-amber-200/30"
+                    style={{
+                      left: `${pastedArea.rect.xPercent}%`,
+                      top: `${pastedArea.rect.yPercent}%`,
+                      width: `${pastedArea.rect.widthPercent}%`,
+                      height: `${pastedArea.rect.heightPercent}%`,
+                    }}
+                  >
+                    <span className="pointer-events-none max-w-[90%] rounded-md bg-white/90 px-2 py-1 text-center text-[9px] font-black leading-tight text-amber-900 shadow sm:text-xs">
+                      Unassigned area
+                    </span>
+
+                    {pastedMenuOpen && (
+                      <div
+                        onPointerDown={(event) =>
+                          event.stopPropagation()
+                        }
+                        onClick={(event) =>
+                          event.stopPropagation()
+                        }
+                        className={`absolute top-0 z-[90] w-72 rounded-md border border-slate-200 bg-white p-4 text-left shadow-xl dark:border-slate-700 dark:bg-slate-900 ${
+                          pastedArea.rect.xPercent +
+                            pastedArea.rect.widthPercent >
+                          72
+                            ? "right-full mr-3"
+                            : "left-full ml-3"
+                        }`}
+                      >
+                        <p className="text-sm font-black text-slate-900 dark:text-white">
+                          Assign this area
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                          Choose an existing unplaced space, or create a new space.
+                        </p>
+
+                        <label
+                          htmlFor="pasted-area-space"
+                          className="mt-4 block text-xs font-bold text-slate-600 dark:text-slate-300"
+                        >
+                          Space
+                        </label>
+                        <select
+                          id="pasted-area-space"
+                          defaultValue=""
+                          disabled={isSaving}
+                          onChange={(event) => {
+                            handlePastedAreaSelection(
+                              event.target.value,
+                            );
+                            event.currentTarget.value = "";
+                          }}
+                          className={`${selectClassName} mt-2`}
+                        >
+                          <option value="" disabled>
+                            Select a space
+                          </option>
+                          {unplacedSpaces.map((space) => (
+                            <option
+                              key={space.id}
+                              value={space.id}
+                            >
+                              {space.code} · {space.name}
+                            </option>
+                          ))}
+                          <option value="__create__">
+                            + Create New Space
+                          </option>
+                        </select>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPastedArea(null);
+                            setPastedMenuOpen(false);
+                            setActionMessage(
+                              "The pasted area was discarded.",
+                            );
+                          }}
+                          className="mt-3 w-full rounded-md border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                        >
+                          Discard Pasted Area
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {draftRect && (
                   <div

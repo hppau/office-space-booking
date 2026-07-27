@@ -1,12 +1,17 @@
-import ProtectedPage from "@/services/auth/ProtectedPage";
-import FloorMapManagementPage from "@/views/floor-map-management/FloorMapManagementPage";
+import { redirect } from "next/navigation";
 
-export default function Page() {
-  return (
-    <ProtectedPage
-      allowedRoles={["HR", "SUPER_ADMIN"]}
-    >
-      <FloorMapManagementPage />
-    </ProtectedPage>
-  );
+type PageProps = {
+  searchParams: Promise<{
+    roomId?: string;
+  }>;
+};
+
+export default async function Page({ searchParams }: PageProps) {
+  const { roomId } = await searchParams;
+
+  const suffix = roomId
+    ? `&roomId=${encodeURIComponent(roomId)}`
+    : "";
+
+  redirect(`/room-designer?tab=layout${suffix}`);
 }

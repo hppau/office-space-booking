@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/services/auth/session-service";
+import { notifyBookingCreated } from "@/services/notifications/notification-service";
 
 type CreateBookingRequest = {
   resourceId: number;
@@ -299,6 +300,15 @@ export async function POST(request: NextRequest) {
           },
         },
       },
+    });
+
+    await notifyBookingCreated({
+      bookingId: booking.id,
+      bookingNumber: booking.bookingNumber,
+      employeeId: currentUser.id,
+      employeeName: currentUser.fullName,
+      roomName: booking.resource.floor.name,
+      status: booking.status,
     });
 
     return NextResponse.json(

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/services/auth/session-service";
 import type { UpdateFloorRequest } from "@/models/location-management";
+import { notifyRoomUpdate } from "@/services/notifications/notification-service";
 
 type RouteContext = {
   params: Promise<{
@@ -302,6 +303,8 @@ export async function PUT(
       },
     });
 
+    await notifyRoomUpdate({ actorId: currentUser.id, roomId: updatedFloor.id, roomName: updatedFloor.name, kind: "UPDATED" });
+
     return NextResponse.json({
       success: true,
       message: "Floor updated successfully.",
@@ -401,6 +404,8 @@ export async function DELETE(
         },
       },
     });
+
+    await notifyRoomUpdate({ actorId: currentUser.id, roomId: deactivatedFloor.id, roomName: deactivatedFloor.name, kind: "UPDATED" });
 
     return NextResponse.json({
       success: true,

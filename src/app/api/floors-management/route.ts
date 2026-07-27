@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/services/auth/session-service";
 import type { CreateFloorRequest } from "@/models/location-management";
+import { notifyRoomUpdate } from "@/services/notifications/notification-service";
 
 function canManageLocations(role: string): boolean {
   return role === "HR" || role === "SUPER_ADMIN";
@@ -225,6 +226,8 @@ export async function POST(request: NextRequest) {
         },
       },
     });
+
+    await notifyRoomUpdate({ actorId: currentUser.id, roomId: createdFloor.id, roomName: createdFloor.name, kind: "CREATED" });
 
     return NextResponse.json(
       {

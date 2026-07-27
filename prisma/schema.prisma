@@ -49,6 +49,19 @@ enum ApprovalDecision {
   MORE_INFORMATION_REQUIRED
 }
 
+enum NotificationType {
+  BOOKING_SUBMITTED
+  NEW_BOOKING_REQUEST
+  BOOKING_APPROVED
+  BOOKING_REJECTED
+  BOOKING_CANCELLED
+  ROOM_CREATED
+  ROOM_UPDATED
+  ROOM_IMAGE_UPDATED
+  ROOM_AREA_UPDATED
+  SYSTEM
+}
+
 model Department {
   id        Int      @id @default(autoincrement())
   name      String   @unique @db.VarChar(100)
@@ -85,6 +98,7 @@ model User {
   createdResources        Resource[]               @relation("ResourceCreatedBy")
   emailVerificationTokens EmailVerificationToken[]
   sentEmailLogs           EmailLog[]               @relation("EmailSentByUser")
+  notifications           Notification[]
 
   @@index([departmentId])
   @@index([managerId])
@@ -263,4 +277,22 @@ model EmailLog {
   @@index([sentById])
   @@index([emailType])
   @@index([sentAt])
+}
+
+model Notification {
+  id          Int              @id @default(autoincrement())
+  userId      Int
+  type        NotificationType
+  title       String           @db.VarChar(150)
+  message     String           @db.VarChar(500)
+  actionUrl   String?          @db.VarChar(500)
+  relatedId   Int?
+  isRead      Boolean          @default(false)
+  readAt      DateTime?
+  createdAt   DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead, createdAt])
+  @@index([type])
 }

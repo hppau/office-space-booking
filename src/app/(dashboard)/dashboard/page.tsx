@@ -5,19 +5,17 @@ import { useRouter } from "next/navigation";
 import { getCurrentSignedInUser } from "@/api/api-service";
 import type { CurrentUser } from "@/models/auth";
 
-function getHomeRoute(
-  role: CurrentUser["role"],
-): string {
+function getHomeRoute(role: CurrentUser["role"]): string {
   switch (role) {
-    case "SUPER_ADMIN":
     case "HR":
+    case "EMPLOYEE":
+      return "/book";
+
+    case "SUPER_ADMIN":
       return "/room-management";
 
     case "MANAGER":
       return "/approvals";
-
-    case "EMPLOYEE":
-      return "/book";
 
     default:
       return "/";
@@ -32,13 +30,10 @@ export default function Page() {
 
     async function redirectUser() {
       try {
-        const currentUser =
-          await getCurrentSignedInUser();
+        const currentUser = await getCurrentSignedInUser();
 
         if (isMounted) {
-          router.replace(
-            getHomeRoute(currentUser.role),
-          );
+          router.replace(getHomeRoute(currentUser.role));
         }
       } catch {
         if (isMounted) {
@@ -58,7 +53,6 @@ export default function Page() {
     <section className="mx-auto flex min-h-[50vh] max-w-7xl items-center justify-center">
       <div className="text-center">
         <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600 dark:border-slate-800 dark:border-t-blue-400" />
-
         <p className="mt-4 text-sm font-semibold text-slate-600 dark:text-slate-300">
           Opening your workspace...
         </p>

@@ -3,7 +3,7 @@ import ProtectedPage from "@/services/auth/ProtectedPage";
 
 export default function Page() {
   return (
-    <ProtectedPage allowedRoles={["EMPLOYEE", "SUPER_ADMIN"]}>
+    <ProtectedPage allowedRoles={["HR", "EMPLOYEE", "SUPER_ADMIN"]}>
       <MyBookingsPage />
     </ProtectedPage>
   );

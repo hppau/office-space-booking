@@ -8,6 +8,8 @@ import {
 } from "react";
 import type { ChangeEvent } from "react";
 
+import ChangePasswordModal from "./ChangePasswordModal";
+
 import {
   getMyProfile,
   updateMyProfile,
@@ -48,15 +50,23 @@ function getInitials(name: string): string {
   );
 }
 
-function getRoleLabel(role: UserProfile["role"]): string {
+function getRoleLabel(
+  role: UserProfile["role"],
+): string {
   switch (role) {
     case "SUPER_ADMIN":
       return "Super Admin";
+
     case "HR":
       return "HR";
+
     case "MANAGER":
       return "Manager";
+
     case "EMPLOYEE":
+      return "Employee";
+
+    default:
       return "Employee";
   }
 }
@@ -76,20 +86,30 @@ export default function ProfilePage() {
   const [form, setForm] =
     useState<ProfileForm>(emptyForm);
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState("");
+  const [isLoading, setIsLoading] =
+    useState(true);
 
-  const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  const [loadError, setLoadError] =
+    useState("");
 
-  const [formError, setFormError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
+  const [isEditing, setIsEditing] =
+    useState(false);
 
-  const profilePhotoInputRef =
-    useRef<HTMLInputElement | null>(null);
+  const [isSaving, setIsSaving] =
+    useState(false);
 
-  const coverPhotoInputRef =
-    useRef<HTMLInputElement | null>(null);
+  const [formError, setFormError] =
+    useState("");
+
+  const [
+    successMessage,
+    setSuccessMessage,
+  ] = useState("");
+
+  const [
+    imageUploadError,
+    setImageUploadError,
+  ] = useState("");
 
   const [
     isUploadingProfilePhoto,
@@ -101,8 +121,16 @@ export default function ProfilePage() {
     setIsUploadingCoverPhoto,
   ] = useState(false);
 
-  const [imageUploadError, setImageUploadError] =
-    useState("");
+  const [
+    isChangePasswordOpen,
+    setIsChangePasswordOpen,
+  ] = useState(false);
+
+  const profilePhotoInputRef =
+    useRef<HTMLInputElement | null>(null);
+
+  const coverPhotoInputRef =
+    useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -119,9 +147,11 @@ export default function ProfilePage() {
         }
 
         setProfile(result);
+
         setForm({
           fullName: result.fullName,
-          phoneNumber: result.phoneNumber ?? "",
+          phoneNumber:
+            result.phoneNumber ?? "",
           jobTitle: result.jobTitle ?? "",
           bio: result.bio ?? "",
         });
@@ -170,10 +200,14 @@ export default function ProfilePage() {
         value.trim().length > 0,
     ).length;
 
-    return Math.round((completed / values.length) * 100);
+    return Math.round(
+      (completed / values.length) * 100,
+    );
   }, [profile]);
 
-  function updateForm<K extends keyof ProfileForm>(
+  function updateForm<
+    K extends keyof ProfileForm,
+  >(
     key: K,
     value: ProfileForm[K],
   ) {
@@ -190,13 +224,15 @@ export default function ProfilePage() {
 
     setForm({
       fullName: profile.fullName,
-      phoneNumber: profile.phoneNumber ?? "",
+      phoneNumber:
+        profile.phoneNumber ?? "",
       jobTitle: profile.jobTitle ?? "",
       bio: profile.bio ?? "",
     });
 
     setFormError("");
     setSuccessMessage("");
+    setImageUploadError("");
     setIsEditing(true);
   }
 
@@ -207,7 +243,8 @@ export default function ProfilePage() {
 
     setForm({
       fullName: profile.fullName,
-      phoneNumber: profile.phoneNumber ?? "",
+      phoneNumber:
+        profile.phoneNumber ?? "",
       jobTitle: profile.jobTitle ?? "",
       bio: profile.bio ?? "",
     });
@@ -221,15 +258,21 @@ export default function ProfilePage() {
       return "Full name is required.";
     }
 
-    if (form.fullName.trim().length > 150) {
+    if (
+      form.fullName.trim().length > 150
+    ) {
       return "Full name cannot exceed 150 characters.";
     }
 
-    if (form.phoneNumber.trim().length > 30) {
+    if (
+      form.phoneNumber.trim().length > 30
+    ) {
       return "Phone number cannot exceed 30 characters.";
     }
 
-    if (form.jobTitle.trim().length > 100) {
+    if (
+      form.jobTitle.trim().length > 100
+    ) {
       return "Job title cannot exceed 100 characters.";
     }
 
@@ -241,7 +284,8 @@ export default function ProfilePage() {
   }
 
   async function handleSaveProfile() {
-    const validationError = validateForm();
+    const validationError =
+      validateForm();
 
     if (validationError) {
       setFormError(validationError);
@@ -252,22 +296,35 @@ export default function ProfilePage() {
       setIsSaving(true);
       setFormError("");
       setSuccessMessage("");
+      setImageUploadError("");
 
       const request: UpdateProfileRequest = {
         fullName: form.fullName.trim(),
-        phoneNumber: form.phoneNumber.trim() || null,
-        jobTitle: form.jobTitle.trim() || null,
+
+        phoneNumber:
+          form.phoneNumber.trim() || null,
+
+        jobTitle:
+          form.jobTitle.trim() || null,
+
         bio: form.bio.trim() || null,
       };
 
-      const result = await updateMyProfile(request);
+      const result =
+        await updateMyProfile(request);
 
       setProfile(result.profile);
+
       setForm({
-        fullName: result.profile.fullName,
+        fullName:
+          result.profile.fullName,
+
         phoneNumber:
           result.profile.phoneNumber ?? "",
-        jobTitle: result.profile.jobTitle ?? "",
+
+        jobTitle:
+          result.profile.jobTitle ?? "",
+
         bio: result.profile.bio ?? "",
       });
 
@@ -294,7 +351,9 @@ export default function ProfilePage() {
       "image/webp",
     ];
 
-    if (!allowedTypes.includes(file.type)) {
+    if (
+      !allowedTypes.includes(file.type)
+    ) {
       return "Only JPG, PNG and WebP images are allowed.";
     }
 
@@ -311,7 +370,8 @@ export default function ProfilePage() {
   async function handleProfilePhotoSelected(
     event: ChangeEvent<HTMLInputElement>,
   ) {
-    const file = event.target.files?.[0];
+    const file =
+      event.target.files?.[0];
 
     event.target.value = "";
 
@@ -319,25 +379,35 @@ export default function ProfilePage() {
       return;
     }
 
-    const validationError = validateSelectedImage(file, 5);
+    const validationError =
+      validateSelectedImage(file, 5);
 
     if (validationError) {
-      setImageUploadError(validationError);
+      setImageUploadError(
+        validationError,
+      );
+
       return;
     }
 
     try {
-      setIsUploadingProfilePhoto(true);
+      setIsUploadingProfilePhoto(
+        true,
+      );
+
       setImageUploadError("");
       setSuccessMessage("");
 
-      const result = await uploadMyProfilePhoto(file);
+      const result =
+        await uploadMyProfilePhoto(file);
 
       setProfile((currentProfile) =>
         currentProfile
           ? {
               ...currentProfile,
-              profileImageUrl: result.profileImageUrl,
+
+              profileImageUrl:
+                result.profileImageUrl,
             }
           : currentProfile,
       );
@@ -350,14 +420,17 @@ export default function ProfilePage() {
           : "Unable to upload profile photo.",
       );
     } finally {
-      setIsUploadingProfilePhoto(false);
+      setIsUploadingProfilePhoto(
+        false,
+      );
     }
   }
 
   async function handleCoverPhotoSelected(
     event: ChangeEvent<HTMLInputElement>,
   ) {
-    const file = event.target.files?.[0];
+    const file =
+      event.target.files?.[0];
 
     event.target.value = "";
 
@@ -365,10 +438,14 @@ export default function ProfilePage() {
       return;
     }
 
-    const validationError = validateSelectedImage(file, 8);
+    const validationError =
+      validateSelectedImage(file, 8);
 
     if (validationError) {
-      setImageUploadError(validationError);
+      setImageUploadError(
+        validationError,
+      );
+
       return;
     }
 
@@ -377,13 +454,16 @@ export default function ProfilePage() {
       setImageUploadError("");
       setSuccessMessage("");
 
-      const result = await uploadMyCoverPhoto(file);
+      const result =
+        await uploadMyCoverPhoto(file);
 
       setProfile((currentProfile) =>
         currentProfile
           ? {
               ...currentProfile,
-              coverImageUrl: result.coverImageUrl,
+
+              coverImageUrl:
+                result.coverImageUrl,
             }
           : currentProfile,
       );
@@ -425,12 +505,15 @@ export default function ProfilePage() {
           </h1>
 
           <p className="mt-2 text-sm text-red-700 dark:text-red-300">
-            {loadError || "Profile information was not found."}
+            {loadError ||
+              "Profile information was not found."}
           </p>
 
           <button
             type="button"
-            onClick={() => window.location.reload()}
+            onClick={() =>
+              window.location.reload()
+            }
             className="mt-6 rounded-xl bg-red-600 px-5 py-3 font-bold text-white transition hover:bg-red-700"
           >
             Try Again
@@ -449,7 +532,8 @@ export default function ProfilePage() {
             profile.coverImageUrl
               ? {
                   backgroundImage: `url("${profile.coverImageUrl}")`,
-                  backgroundPosition: "center",
+                  backgroundPosition:
+                    "center",
                   backgroundSize: "cover",
                 }
               : undefined
@@ -463,14 +547,18 @@ export default function ProfilePage() {
             type="file"
             accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
             onChange={(event) => {
-              void handleCoverPhotoSelected(event);
+              void handleCoverPhotoSelected(
+                event,
+              );
             }}
             className="sr-only"
           />
 
           <label
             htmlFor="cover-photo-input"
-            aria-disabled={isUploadingCoverPhoto}
+            aria-disabled={
+              isUploadingCoverPhoto
+            }
             className={`absolute bottom-4 right-4 z-20 rounded-xl bg-white/90 px-4 py-2 text-sm font-bold text-slate-700 shadow-sm backdrop-blur transition ${
               isUploadingCoverPhoto
                 ? "pointer-events-none cursor-not-allowed opacity-70"
@@ -496,22 +584,28 @@ export default function ProfilePage() {
             <div className="relative shrink-0">
               {profile.profileImageUrl ? (
                 <img
-                  src={profile.profileImageUrl}
+                  src={
+                    profile.profileImageUrl
+                  }
                   alt={`${profile.fullName}'s profile`}
                   className="h-40 w-40 rounded-full border-8 border-white object-cover shadow-lg dark:border-slate-900"
                 />
               ) : (
                 <div className="flex h-40 w-40 items-center justify-center rounded-full border-8 border-white bg-blue-600 text-5xl font-black text-white shadow-lg dark:border-slate-900">
-                  {getInitials(profile.fullName)}
+                  {getInitials(
+                    profile.fullName,
+                  )}
                 </div>
               )}
 
               <button
                 type="button"
-                onClick={() =>
-                  profilePhotoInputRef.current?.click()
+                onClick={() => {
+                  profilePhotoInputRef.current?.click();
+                }}
+                disabled={
+                  isUploadingProfilePhoto
                 }
-                disabled={isUploadingProfilePhoto}
                 title="Change profile photo"
                 className="absolute bottom-2 right-2 flex h-11 w-11 items-center justify-center rounded-full border-4 border-white bg-slate-100 text-slate-700 shadow transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-900 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700"
               >
@@ -528,9 +622,11 @@ export default function ProfilePage() {
                 ref={profilePhotoInputRef}
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
-                onChange={(event) =>
-                  void handleProfilePhotoSelected(event)
-                }
+                onChange={(event) => {
+                  void handleProfilePhotoSelected(
+                    event,
+                  );
+                }}
                 className="hidden"
               />
             </div>
@@ -541,7 +637,10 @@ export default function ProfilePage() {
               </h1>
 
               <p className="mt-2 text-base font-semibold text-slate-600 dark:text-slate-300">
-                {profile.jobTitle || getRoleLabel(profile.role)}
+                {profile.jobTitle ||
+                  getRoleLabel(
+                    profile.role,
+                  )}
               </p>
 
               <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
@@ -569,6 +668,7 @@ export default function ProfilePage() {
       {successMessage && (
         <div className="mt-6 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-700 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-300">
           <i className="fa-solid fa-circle-check mr-2" />
+
           {successMessage}
         </div>
       )}
@@ -576,6 +676,7 @@ export default function ProfilePage() {
       {imageUploadError && (
         <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">
           <i className="fa-solid fa-circle-exclamation mr-2" />
+
           {imageUploadError}
         </div>
       )}
@@ -589,7 +690,8 @@ export default function ProfilePage() {
               </h2>
 
               <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                Update information shown on your profile.
+                Update information shown on
+                your profile.
               </p>
             </div>
 
@@ -612,13 +714,15 @@ export default function ProfilePage() {
               <input
                 id="profile-full-name"
                 value={form.fullName}
-                disabled={!isEditing || isSaving}
-                onChange={(event) =>
+                disabled={
+                  !isEditing || isSaving
+                }
+                onChange={(event) => {
                   updateForm(
                     "fullName",
                     event.target.value,
-                  )
-                }
+                  );
+                }}
                 className={`${inputClassName} disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-600 dark:disabled:bg-slate-800`}
               />
             </div>
@@ -635,14 +739,19 @@ export default function ProfilePage() {
                 <input
                   id="profile-phone"
                   type="tel"
-                  value={form.phoneNumber}
-                  disabled={!isEditing || isSaving}
-                  onChange={(event) =>
+                  value={
+                    form.phoneNumber
+                  }
+                  disabled={
+                    !isEditing ||
+                    isSaving
+                  }
+                  onChange={(event) => {
                     updateForm(
                       "phoneNumber",
                       event.target.value,
-                    )
-                  }
+                    );
+                  }}
                   placeholder="Example: +65 9123 4567"
                   className={`${inputClassName} disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-600 dark:disabled:bg-slate-800`}
                 />
@@ -659,13 +768,16 @@ export default function ProfilePage() {
                 <input
                   id="profile-job-title"
                   value={form.jobTitle}
-                  disabled={!isEditing || isSaving}
-                  onChange={(event) =>
+                  disabled={
+                    !isEditing ||
+                    isSaving
+                  }
+                  onChange={(event) => {
                     updateForm(
                       "jobTitle",
                       event.target.value,
-                    )
-                  }
+                    );
+                  }}
                   placeholder="Example: Software Engineer"
                   className={`${inputClassName} disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-600 dark:disabled:bg-slate-800`}
                 />
@@ -691,10 +803,15 @@ export default function ProfilePage() {
                 rows={5}
                 maxLength={500}
                 value={form.bio}
-                disabled={!isEditing || isSaving}
-                onChange={(event) =>
-                  updateForm("bio", event.target.value)
+                disabled={
+                  !isEditing || isSaving
                 }
+                onChange={(event) => {
+                  updateForm(
+                    "bio",
+                    event.target.value,
+                  );
+                }}
                 placeholder="Write a short introduction about yourself."
                 className={`${inputClassName} resize-none disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-600 dark:disabled:bg-slate-800`}
               />
@@ -703,6 +820,7 @@ export default function ProfilePage() {
             {formError && (
               <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">
                 <i className="fa-solid fa-circle-exclamation mr-2" />
+
                 {formError}
               </div>
             )}
@@ -720,9 +838,9 @@ export default function ProfilePage() {
 
                 <button
                   type="button"
-                  onClick={() =>
-                    void handleSaveProfile()
-                  }
+                  onClick={() => {
+                    void handleSaveProfile();
+                  }}
                   disabled={isSaving}
                   className="rounded-xl bg-blue-600 px-6 py-3 font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400"
                 >
@@ -742,7 +860,8 @@ export default function ProfilePage() {
             </h2>
 
             <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-              These details are managed by HR or an administrator.
+              These details are managed by
+              HR or an administrator.
             </p>
 
             <dl className="mt-6 divide-y divide-slate-100 dark:divide-slate-800">
@@ -753,12 +872,17 @@ export default function ProfilePage() {
 
               <AccountDetail
                 label="Employee code"
-                value={profile.employeeCode || "Not assigned"}
+                value={
+                  profile.employeeCode ||
+                  "Not assigned"
+                }
               />
 
               <AccountDetail
                 label="Role"
-                value={getRoleLabel(profile.role)}
+                value={getRoleLabel(
+                  profile.role,
+                )}
               />
 
               <AccountDetail
@@ -772,7 +896,8 @@ export default function ProfilePage() {
               <AccountDetail
                 label="Manager"
                 value={
-                  profile.manager?.fullName ||
+                  profile.manager
+                    ?.fullName ||
                   "Not assigned"
                 }
               />
@@ -780,13 +905,17 @@ export default function ProfilePage() {
               <AccountDetail
                 label="Account status"
                 value={
-                  profile.isActive ? "Active" : "Inactive"
+                  profile.isActive
+                    ? "Active"
+                    : "Inactive"
                 }
               />
 
               <AccountDetail
                 label="Member since"
-                value={formatDate(profile.createdAt)}
+                value={formatDate(
+                  profile.createdAt,
+                )}
               />
             </dl>
           </section>
@@ -799,7 +928,8 @@ export default function ProfilePage() {
                 </h2>
 
                 <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                  Complete your profile so colleagues can identify you.
+                  Complete your profile so
+                  colleagues can identify you.
                 </p>
               </div>
 
@@ -824,20 +954,43 @@ export default function ProfilePage() {
             </h2>
 
             <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
-              Password changing and active-session controls will be added in the next step.
+              Change your account password
+              and protect your account.
             </p>
 
             <button
               type="button"
-              disabled
-              className="mt-5 w-full rounded-xl border border-slate-300 bg-slate-100 px-5 py-3 font-bold text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400"
+              onClick={() => {
+                setSuccessMessage("");
+                setFormError("");
+                setImageUploadError("");
+
+                setIsChangePasswordOpen(
+                  true,
+                );
+              }}
+              className="mt-5 w-full rounded-xl bg-blue-600 px-5 py-3 font-bold text-white transition hover:bg-blue-700"
             >
               <i className="fa-solid fa-lock mr-2" />
+
               Change Password
             </button>
           </section>
         </div>
       </section>
+
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onClose={() => {
+          setIsChangePasswordOpen(false);
+        }}
+        onSuccess={(message) => {
+          setIsChangePasswordOpen(false);
+          setSuccessMessage(message);
+          setFormError("");
+          setImageUploadError("");
+        }}
+      />
     </div>
   );
 }

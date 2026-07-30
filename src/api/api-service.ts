@@ -8,7 +8,10 @@ import type {
   BookingMapFloor,
   BookingMapsApiResponse,
 } from "@/models/booking-map";
-
+import type {
+  ChangePasswordRequest,
+  ChangePasswordResponse,
+} from "@/models/password";
 import type {
   CreateFloorRequest,
   CreateOfficeRequest,
@@ -672,6 +675,28 @@ export async function uploadMyCoverPhoto(
   if (!response.ok) {
     throw new Error(
       result.message || "Unable to upload cover photo.",
+    );
+  }
+
+  return result;
+}
+export async function changeMyPassword(
+  request: ChangePasswordRequest,
+): Promise<ChangePasswordResponse> {
+  const response = await fetch("/api/profile/password", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(request),
+  });
+
+  const result =
+    (await response.json()) as ChangePasswordResponse;
+
+  if (!response.ok || !result.success) {
+    throw new Error(
+      result.message || "Unable to change password.",
     );
   }
 

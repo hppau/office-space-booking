@@ -25,6 +25,7 @@ export async function GET() {
         fullName: user.fullName,
         email: user.email,
         role: user.role,
+        profileImageUrl: user.profileImageUrl,
         department: user.department,
       },
     });

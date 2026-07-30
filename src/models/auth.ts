@@ -1,4 +1,8 @@
-export type UserRole = "SUPER_ADMIN" | "HR" | "MANAGER" | "EMPLOYEE";
+export type UserRole =
+  | "SUPER_ADMIN"
+  | "HR"
+  | "MANAGER"
+  | "EMPLOYEE";
 
 export type CurrentUser = {
   id: number;
@@ -6,6 +10,7 @@ export type CurrentUser = {
   fullName: string;
   email: string;
   role: UserRole;
+  profileImageUrl: string | null;
   department: {
     id: number;
     name: string;

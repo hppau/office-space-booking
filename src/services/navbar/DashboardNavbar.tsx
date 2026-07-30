@@ -140,8 +140,18 @@ export default function DashboardNavbar() {
                   : "border-slate-200 bg-slate-50 hover:border-blue-300 hover:bg-blue-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-blue-700 dark:hover:bg-blue-950/30"
               }`}
             >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">
-                {getInitials(currentUser.fullName)}
+              <div className="flex h-9 w-9 shrink-0 overflow-hidden rounded-full bg-blue-600">
+                {currentUser.profileImageUrl ? (
+                  <img
+                    src={currentUser.profileImageUrl}
+                    alt={`${currentUser.fullName}'s profile`}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-sm font-bold text-white">
+                    {getInitials(currentUser.fullName)}
+                  </div>
+                )}
               </div>
 
               <div className="hidden min-w-0 text-left sm:block">
